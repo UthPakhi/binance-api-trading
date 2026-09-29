@@ -1,0 +1,6 @@
+{
+  "name": "Crypto Trade Sizer",
+  "description": "Calculate exact crypto position sizes and sync your trade history to the cloud.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

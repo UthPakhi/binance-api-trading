@@ -1,0 +1,27 @@
+--- src/components/History.tsx
++++ src/components/History.tsx
+@@ -183,16 +183,23 @@
+     const keepPending = new Set();
+     const deleteIds: string[] = [];
+     
++    // First pass: register all valid pending limit orders
++    for (const t of trades) {
++      if (t.status === 'PENDING' && t.notes?.includes('Binance')) {
++         keepPending.add(`${t.symbol}_${t.entryPrice}`);
++      }
++    }
++
+     for (const t of trades) {
+       if (!t.notes?.includes('Binance')) {
+         continue;
+       }
+       
+       if (t.status === 'ACTIVE') {
+-         if (keepActive.has(t.symbol)) {
++         // If an ACTIVE trade perfectly matches a PENDING limit order's entry price, it's a fake ghost active trade.
++         if (keepPending.has(`${t.symbol}_${t.entryPrice}`) || keepActive.has(t.symbol)) {
+              if (t.id) deleteIds.push(t.id);
+          } else {
+              keepActive.add(t.symbol);
+          }
+       } else if (t.status === 'PENDING') {
