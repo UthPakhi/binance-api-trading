@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { Calculator } from './components/Calculator';
 import { Button } from './components/Button';
-import { auth, loginWithGoogle, logout } from './lib/firebase';
+import { auth, loginWithGoogle, signInWithEmail, signUpWithEmail, logout } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { Calculator as CalcIcon, History as HistIcon, LogOut, TrendingUp } from 'lucide-react';
 import { cn } from './lib/utils';
@@ -57,6 +57,9 @@ export default function App() {
   // If we already have a cached session, do NOT hold the user on a loading screen
   const [loading, setLoading] = useState(() => !auth.currentUser && !cachedUser);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -130,6 +133,43 @@ export default function App() {
     }
   };
 
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput || !passwordInput) {
+      toast.error('Please enter email and password');
+      return;
+    }
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    try {
+      if (isSignUpMode) {
+        await signUpWithEmail(emailInput, passwordInput);
+        toast.success('Account created successfully!');
+      } else {
+        await signInWithEmail(emailInput, passwordInput);
+        toast.success('Signed in successfully!');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Authentication failed. Please check credentials.');
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleLocalTraderLogin = () => {
+    const localTrader = {
+      uid: 'oracle-trader-local-uid',
+      email: 'trader@oracle.local',
+      displayName: 'Oracle Trader',
+      photoURL: ''
+    };
+    try {
+      localStorage.setItem('trade_sizer_cached_user', JSON.stringify(localTrader));
+      localStorage.removeItem('trade_sizer_explicit_logout');
+    } catch {}
+    setUser(localTrader as any);
+  };
+
   if (loading && !user) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-neutral-400">
@@ -182,9 +222,57 @@ export default function App() {
           onClick={handleGoogleSignIn} 
           disabled={isSigningIn}
           size="lg" 
-          className="w-full max-w-xs transition-opacity bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50"
+          className="w-full max-w-xs transition-opacity bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50 mb-3"
         >
           {isSigningIn ? 'Connecting...' : 'Sign In with Google'}
+        </Button>
+
+        <div className="w-full max-w-xs flex items-center gap-3 my-2 text-neutral-600">
+          <div className="flex-1 h-px bg-neutral-800" />
+          <span className="text-xs uppercase text-neutral-500">or email</span>
+          <div className="flex-1 h-px bg-neutral-800" />
+        </div>
+
+        <form onSubmit={handleEmailAuth} className="w-full max-w-xs space-y-3 mb-4">
+          <input 
+            type="email" 
+            placeholder="Email address"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-sm focus:outline-none focus:border-blue-500"
+          />
+          <input 
+            type="password" 
+            placeholder="Password (min 6 chars)"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-sm focus:outline-none focus:border-blue-500"
+          />
+          <Button 
+            type="submit"
+            disabled={isSigningIn}
+            size="lg" 
+            className="w-full transition-opacity bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-950/50"
+          >
+            {isSigningIn ? 'Processing...' : (isSignUpMode ? 'Create Account' : 'Sign In with Email')}
+          </Button>
+          <div className="text-center">
+            <button 
+              type="button"
+              onClick={() => setIsSignUpMode(!isSignUpMode)}
+              className="text-xs text-neutral-400 hover:text-white underline mt-1"
+            >
+              {isSignUpMode ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+            </button>
+          </div>
+        </form>
+
+        <Button 
+          onClick={handleLocalTraderLogin} 
+          size="lg" 
+          className="w-full max-w-xs transition-opacity bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/30 text-xs py-2"
+        >
+          ⚡ Enter Local Trader Mode (Instant)
         </Button>
       </div>
     );

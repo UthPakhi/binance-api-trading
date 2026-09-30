@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, persistentMultipleTabManager } from "firebase/firestore";
 import config from "../../firebase-applet-config.json";
 
@@ -57,32 +57,48 @@ export const loginWithGoogle = async () => {
     try {
       localStorage.removeItem('trade_sizer_explicit_logout');
     } catch {}
-    const result = await signInWithPopup(auth, provider);
-    if (result?.user) {
-      try {
-        localStorage.setItem('trade_sizer_cached_user', JSON.stringify({
-          uid: result.user.uid,
-          email: result.user.email,
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL
-        }));
-      } catch {}
-    }
-    return result.user;
+    await signInWithRedirect(auth, provider);
   } catch (error: any) {
-    // Normal user actions such as closing the popup, clicking outside, or re-clicking
-    // do not represent broken system states and should be gracefully handled
-    if (
-      error?.code === "auth/cancelled-popup-request" ||
-      error?.code === "auth/popup-closed-by-user" ||
-      error?.message?.includes("cancelled-popup-request") ||
-      error?.message?.includes("popup-closed-by-user")
-    ) {
-      console.info("Sign-in popup was cancelled or superseded by another request.");
-      return null;
-    }
     console.error("Error signing in with Google:", error);
     throw error;
+  }
+};
+
+// Handle redirect result on load
+getRedirectResult(auth).then((result) => {
+  if (result?.user) {
+    try {
+      localStorage.setItem('trade_sizer_cached_user', JSON.stringify({
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL
+      }));
+    } catch {}
+  }
+}).catch((err) => {
+  console.warn("Redirect result error:", err);
+});
+
+export const signInWithEmail = async (email: string, pass: string) => {
+  try {
+    localStorage.removeItem('trade_sizer_explicit_logout');
+    const res = await signInWithEmailAndPassword(auth, email, pass);
+    return res.user;
+  } catch (err) {
+    console.error("Email sign-in error:", err);
+    throw err;
+  }
+};
+
+export const signUpWithEmail = async (email: string, pass: string) => {
+  try {
+    localStorage.removeItem('trade_sizer_explicit_logout');
+    const res = await createUserWithEmailAndPassword(auth, email, pass);
+    return res.user;
+  } catch (err) {
+    console.error("Email sign-up error:", err);
+    throw err;
   }
 };
 
