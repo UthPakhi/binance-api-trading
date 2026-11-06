@@ -1,5 +1,5 @@
 import { Trade } from '../types';
-import { calculateRemainingCoins, isAlphaTradeOrSymbol, isLimitOrderTrade } from './tradeUtils';
+import { calculateRemainingCoins, isAlphaTradeOrSymbol, isLimitOrderTrade, isSameSymbol } from './tradeUtils';
 
 export interface BinancePositionItem {
   symbol: string;
@@ -66,11 +66,17 @@ export function calculateUnassignedBalance(
   const totalBinanceCoins = Math.abs(position.positionAmt || 0);
   const currentPrice = position.currentPrice || position.entryPrice || 0;
 
-  // Filter active or pending trades for this exact symbol (excluding closed)
-  const existingTrades = activeTrades.filter(
-    t => t.symbol.toUpperCase() === symbol && 
-    (t.status === 'ACTIVE' || t.status === 'PENDING' || t.status === 'HIT_TP1' || t.status === 'HIT_TP2')
-  );
+  // Filter active trades for this exact symbol.
+  // For spot wallet positions (!position.isPendingOrder), match only active/holding trades with real wallet coins.
+  // For pending limit orders (position.isPendingOrder), match only PENDING limit order trades.
+  const existingTrades = activeTrades.filter(t => {
+    if (!isSameSymbol(t.symbol, symbol)) return false;
+    if (position.isPendingOrder) {
+      return t.status === 'PENDING';
+    } else {
+      return t.status === 'ACTIVE' || t.status === 'HIT_TP1' || t.status === 'HIT_TP2' || t.status === 'PARTIAL_EXIT';
+    }
+  });
 
   const trackedCoins = existingTrades.reduce((sum, t) => {
     return sum + calculateRemainingCoins(t);
@@ -132,13 +138,19 @@ export function groupFillsByOrder(fills: TradeFill[]): ExecutionBatch[] {
 }
 
 /**
- * Generates an idempotent, unique fingerprint for a trade to prevent duplicate insertions.
+ * Generates an idempotent, unique fingerprint for a trade keyed directly to Binance's unique orderId and tradeId.
  */
 export function generateTradeFingerprint(trade: Partial<Trade>): string {
+  if (trade.idempotencyKey) {
+    return trade.idempotencyKey;
+  }
+  const sym = (trade.symbol || '').toUpperCase().trim();
+  if (trade.binanceOrderId && trade.binanceTradeId) {
+    return `${sym}_${trade.binanceOrderId}_${trade.binanceTradeId}`;
+  }
   if (trade.binanceOrderId) {
     return `binance_${trade.binanceOrderId}`;
   }
-  const sym = (trade.symbol || '').toUpperCase().trim();
   const entry = (trade.entryPrice || 0).toFixed(8);
   const size = (trade.positionSizeCoins || 0).toFixed(4);
   const type = trade.type || 'TRADE';

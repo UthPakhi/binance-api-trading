@@ -5,7 +5,7 @@ import { Trade, DisciplineTag, PnlViewMode } from '../types';
 import { 
   Trash2, Edit2, Activity, RefreshCw, Settings, Wallet, List, LayoutGrid, 
   CloudDownload, ChevronDown, ChevronUp, Wand2, LineChart, RotateCcw, Target, 
-  CheckCircle2, Zap, ArrowUpDown, Lock, Shield, Share2, Scissors, Info, Sparkles, Eye, EyeOff, Brain, Award, AlertTriangle 
+  CheckCircle2, Zap, ArrowUpDown, Lock, Shield, Share2, Scissors, Info, Sparkles, Eye, EyeOff, Brain, Award, AlertTriangle, Calendar 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from './Button';
@@ -16,11 +16,22 @@ import {
   getTradeEffectiveRiskPercent, getTradeCoins, isTradeClosed, getTradeInvestedAmount, 
   isBinanceLimitOrder, isBinanceLinkedTrade, isLimitOrderTrade, groupTradesByTicker,
   formatCurrency, formatPkr, calculateTargetRR, calculateProfit, calculateTargetProfit,
-  getTradeExitPrice, parseTradeNotesLineByLine,
+  getTradeExitPrice, parseTradeNotesLineByLine, parseStructuredTradeNotes, getTradeExecutionNotes,
+  formatPartialExitNote, getTradeBankedProfit,
+  formatBankedProfitDisplay, formatExitPnlDisplay, formatNoteLineForView, getBankedReturnPercent,
   calculateRMultiple, formatPnlDisplay, isTp1Reached, isStopLossAtBreakeven, 
   DISCIPLINE_TAGS, calculateDisciplineStats, DisciplineStats,
-  getTradeRiskFramework, calculateNormalizedRMultiple 
+  getTradeRiskFramework, calculateNormalizedRMultiple, getCleanSymbol, isSameSymbol,
+  generateSolidSellPlan, deduplicateTrades,
+  getLivePriceForSymbol, getTradeGroupFillDistancePercent, getLimitOrderFillDistancePercent,
+  formatTradeDuration, getTradeAchievedPnL, getTradeAchievedPnLPercent
 } from '../lib/tradeUtils';
+import { 
+  groupTradesByDay, 
+  calculateDateRangeSummary, 
+  filterTradesByDateRange, 
+  DayGroupStats 
+} from '../lib/dayStatsUtils';
 import { calculateMergedDCA } from '../lib/tradeIngestion';
 import { useTradeContext } from '../lib/TradeContext';
 import { syncTradeWithBinance } from '../lib/binanceOrderSync';
@@ -28,7 +39,11 @@ import { Input } from './Input';
 import { TradeProgressBar } from './TradeProgressBar';
 import { PortfolioRiskCockpit } from './PortfolioRiskCockpit';
 import { MultiTradeGroupCard } from './MultiTradeGroupCard';
+import { PendingTradeGroupCard } from './PendingTradeGroupCard';
 import { DisciplineScorecard } from './DisciplineScorecard';
+import { ScaleOutModal } from './ScaleOutModal';
+import { ClosedTradesDayAnalytics } from './ClosedTradesDayAnalytics';
+import { triggerHaptic } from '../lib/haptics';
 
 // Code-split heavy modals and charts to keep History light and instantaneous
 const EditTradeModal = React.lazy(() => import('./EditTradeModal').then(m => ({ default: m.EditTradeModal })));
@@ -37,6 +52,7 @@ const ChartModal = React.lazy(() => import('./ChartModal').then(m => ({ default:
 const SharePnLModal = React.lazy(() => import('./SharePnLModal').then(m => ({ default: m.SharePnLModal })));
 const TradeDetailDrawer = React.lazy(() => import('./TradeDetailDrawer').then(m => ({ default: m.TradeDetailDrawer })));
 const DisciplineReviewModal = React.lazy(() => import('./DisciplineReviewModal').then(m => ({ default: m.DisciplineReviewModal })));
+const ActivePositionConfirmModal = React.lazy(() => import('./ActivePositionConfirmModal').then(m => ({ default: m.ActivePositionConfirmModal })));
 
 export function History() {
   const { 
@@ -56,19 +72,84 @@ export function History() {
     setIsDemoMode,
     feeTier,
     setFeeTier,
+    effectiveFeeRate,
     isOnline,
     offlineQueueCount,
     saveTradeOptimistic,
     updateTradeOptimistic,
-    deleteTradeOptimistic
+    deleteTradeOptimistic,
+    historyTimeHorizon,
+    setHistoryTimeHorizon
   } = useTradeContext();
+  const confirmClearClosedRef = useRef<number>(0);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [sharingTrade, setSharingTrade] = useState<Trade | null>(null);
+  const [scaleOutTrade, setScaleOutTrade] = useState<Trade | null>(null);
   const [inspectingTrade, setInspectingTrade] = useState<Trade | null>(null);
   const [privacyMode, setPrivacyMode] = useState<boolean>(() => localStorage.getItem('trade_sizer_privacy_mode') === 'true');
   const [reviewingDisciplineTrade, setReviewingDisciplineTrade] = useState<Trade | null>(null);
+  const [isEditingBase, setIsEditingBase] = useState(false);
+  const [tempBaseCapital, setTempBaseCapital] = useState((baseCapital || 0).toString());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [compactView, setCompactView] = useState(() => localStorage.getItem('history_compact') === 'true');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [activePositionConfirmState, setActivePositionConfirmState] = useState<{
+    isOpen: boolean;
+    symbol: string;
+    newTrade: Partial<Trade>;
+    existingPositions: Trade[];
+    onConfirmNew: () => void | Promise<void>;
+    onConfirmMerge: (targetTradeId: string, mergedData: any) => void | Promise<void>;
+  } | null>(null);
+  const [chartTrade, setChartTrade] = useState<Trade | null>(null);
+  const [localCompact, setLocalCompact] = useState<Record<string, boolean>>({});
+  const [syncingExecutions, setSyncingExecutions] = useState<Record<string, boolean>>({});
+  const [categoryMenuTradeId, setCategoryMenuTradeId] = useState<string | null>(null);
+  const [draggedTradeId, setDraggedTradeId] = useState<string | null>(null);
+  const draggedTradeIdRef = useRef<string | null>(null);
+  const isDraggingRef = useRef(false);
+  const [activeDropTarget, setActiveDropTarget] = useState<'ACTIVE' | 'HOLDING' | 'PENDING' | 'CLOSED' | null>(null);
+  const [sortBy, setSortBy] = useState<'INVESTED' | 'DATE' | 'PNL' | 'RISK'>(() => {
+    return (localStorage.getItem('history_sort_by') as any) || 'INVESTED';
+  });
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [closedSortBy, setClosedSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'PNL_DESC' | 'PNL_ASC' | 'SIZE' | 'FEES' | 'DISCIPLINE_PER_PLAN' | 'DISCIPLINE_DEVIATED' | 'RISK_DESC' | 'RETURN_PCT_DESC' | 'RETURN_PCT_ASC'>(() => {
+    return (localStorage.getItem('history_closed_sort_by') as any) || 'DATE_DESC';
+  });
+  const [closedSortMenuOpen, setClosedSortMenuOpen] = useState(false);
+  const [closedSearchQuery, setClosedSearchQuery] = useState('');
+  const [closedFilterTab, setClosedFilterTab] = useState<'ALL' | 'WINS' | 'LOSSES' | 'SIGNIFICANT' | 'PLAN_FOLLOWED' | 'DEVIATED'>(() => {
+    return (localStorage.getItem('history_closed_filter_tab') as any) || 'ALL';
+  });
+  const [closedDatePreset, setClosedDatePreset] = useState<string>(() => {
+    return localStorage.getItem('history_closed_date_preset') || 'ALL';
+  });
+  const [closedStartDate, setClosedStartDate] = useState<string>('');
+  const [closedEndDate, setClosedEndDate] = useState<string>('');
+  const [closedSelectedDay, setClosedSelectedDay] = useState<string | null>(null);
+  const [closedViewGrouping, setClosedViewGrouping] = useState<'BY_DAY' | 'FLAT'>(() => {
+    return (localStorage.getItem('history_closed_grouping') as any) || 'BY_DAY';
+  });
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+
+  const toggleDayExpanded = (dayKey: string) => {
+    triggerHaptic('selection');
+    setExpandedDays(prev => ({
+      ...prev,
+      [dayKey]: prev[dayKey] === false ? true : false
+    }));
+  };
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('history_collapsed_sections');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const handleViewModeChange = async (mode: PnlViewMode) => {
+    triggerHaptic('selection');
     if (typeof setViewMode === 'function') {
       await setViewMode(mode);
     } else {
@@ -84,37 +165,9 @@ export function History() {
     };
     toast.success(`Switched to ${labels[mode] || mode}`);
   };
-  const [isEditingBase, setIsEditingBase] = useState(false);
-  const [tempBaseCapital, setTempBaseCapital] = useState((baseCapital || 0).toString());
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [compactView, setCompactView] = useState(() => localStorage.getItem('history_compact') === 'true');
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [chartTrade, setChartTrade] = useState<Trade | null>(null);
-  const [localCompact, setLocalCompact] = useState<Record<string, boolean>>({});
-  const [syncingExecutions, setSyncingExecutions] = useState<Record<string, boolean>>({});
-  const [categoryMenuTradeId, setCategoryMenuTradeId] = useState<string | null>(null);
-  const [draggedTradeId, setDraggedTradeId] = useState<string | null>(null);
-  const draggedTradeIdRef = useRef<string | null>(null);
-  const isDraggingRef = useRef(false);
-  const [activeDropTarget, setActiveDropTarget] = useState<'ACTIVE' | 'HOLDING' | 'PENDING' | 'CLOSED' | null>(null);
-  const [sortBy, setSortBy] = useState<'INVESTED' | 'DATE' | 'PNL'>(() => {
-    return (localStorage.getItem('history_sort_by') as 'INVESTED' | 'DATE' | 'PNL') || 'INVESTED';
-  });
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const [closedSortBy, setClosedSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'PNL_DESC' | 'PNL_ASC' | 'SIZE' | 'FEES'>(() => {
-    return (localStorage.getItem('history_closed_sort_by') as any) || 'DATE_DESC';
-  });
-  const [closedSortMenuOpen, setClosedSortMenuOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('history_collapsed_sections');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
 
   const toggleSectionCollapse = (section: 'ACTIVE' | 'HOLDING' | 'PENDING' | 'CLOSED') => {
+    triggerHaptic('selection');
     setCollapsedSections(prev => {
       const next = { ...prev, [section]: !prev[section] };
       return next;
@@ -141,19 +194,20 @@ export function History() {
     }
   }, [categoryMenuTradeId, sortMenuOpen, closedSortMenuOpen]);
 
-  const handleSelectSort = (newSort: 'INVESTED' | 'DATE' | 'PNL') => {
+  const handleSelectSort = (newSort: 'INVESTED' | 'DATE' | 'PNL' | 'RISK') => {
     setSortBy(newSort);
     localStorage.setItem('history_sort_by', newSort);
     setSortMenuOpen(false);
     const labels: Record<string, string> = {
       INVESTED: 'Amount Invested (Most on top)',
       DATE: 'Date Added (Newest on top)',
-      PNL: 'Unrealized PnL (Highest on top)'
+      PNL: 'Unrealized PnL (Highest on top)',
+      RISK: 'Risked % (Highest risk first)'
     };
     toast.success(`Sorted by ${labels[newSort] || newSort}`);
   };
 
-  const handleSelectClosedSort = (newSort: 'DATE_DESC' | 'DATE_ASC' | 'PNL_DESC' | 'PNL_ASC' | 'SIZE' | 'FEES') => {
+  const handleSelectClosedSort = (newSort: 'DATE_DESC' | 'DATE_ASC' | 'PNL_DESC' | 'PNL_ASC' | 'SIZE' | 'FEES' | 'RISK_DESC' | 'RETURN_PCT_DESC' | 'RETURN_PCT_ASC') => {
     setClosedSortBy(newSort);
     localStorage.setItem('history_closed_sort_by', newSort);
     setClosedSortMenuOpen(false);
@@ -162,8 +216,11 @@ export function History() {
       DATE_ASC: 'Oldest Closed First',
       PNL_DESC: 'Highest Profit First',
       PNL_ASC: 'Biggest Loss First',
+      RETURN_PCT_DESC: 'Highest Return % First 🚀',
+      RETURN_PCT_ASC: 'Lowest Return % First',
       SIZE: 'Position Size (Largest on top)',
-      FEES: 'Fees Paid (Highest on top)'
+      FEES: 'Fees Paid (Highest on top)',
+      RISK_DESC: 'Risked % (Highest risk first)'
     };
     toast.success(`Closed trades sorted by ${labels[newSort] || newSort}`);
   };
@@ -177,11 +234,13 @@ export function History() {
   const toggleLocalCompact = (trade: Trade) => {
     if (isDraggingRef.current) return;
     if (!trade.id) return;
+    triggerHaptic('selection');
     setLocalCompact(prev => ({ ...prev, [trade.id]: !isTradeCompact(trade) }));
   };
 
   const handleSyncExecutions = async (trade: Trade, silent = false) => {
     if (!trade.id) return;
+    if (!silent) triggerHaptic('medium');
     setSyncingExecutions(prev => ({ ...prev, [trade.id]: true }));
     const toastId = silent ? null : toast.loading(`Checking Binance trades & targets for ${trade.symbol}...`);
     try {
@@ -209,15 +268,22 @@ export function History() {
 
   const handleUpdateRunningFromBinance = async (tradeId: string, entry: number, size: number, feeUsd?: number) => {
     try {
+      const existingTrade = trades.find(t => t.id === tradeId);
+      const isHolding = existingTrade?.type === 'HOLDING';
       await updateDoc(doc(db, 'trades', tradeId), {
         entryPrice: entry,
         positionSizeCoins: Math.abs(size),
         totalBuyUsd: Math.abs(size) * entry,
+        positionSize: Math.abs(size) * entry,
         feeUsd: feeUsd !== undefined ? feeUsd : 0,
-        notes: 'Updated & synced from Binance Spot holdings'
+        status: 'ACTIVE',
+        ...(isHolding ? { type: 'HOLDING', stopLoss: 0, takeProfit1: 0, riskAmount: 0 } : {}),
+        notes: isHolding ? 'Updated & synced from Binance Spot holdings' : 'Updated & synced from Binance Spot holdings',
+        updatedAt: Date.now()
       });
       setShowImportModal(false);
-      toast.success('Successfully synced running trade with Binance!');
+      toast.success(isHolding ? 'Successfully synced holding with Binance!' : 'Successfully synced running trade with Binance!');
+      await refreshTrades();
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || 'Failed to update running trade');
@@ -225,6 +291,7 @@ export function History() {
   };
 
   const togglePrivacyMode = () => {
+    triggerHaptic('light');
     const next = !privacyMode;
     setPrivacyMode(next);
     try {
@@ -235,6 +302,7 @@ export function History() {
 
   const handleMoveToBreakeven = async (trade: Trade) => {
     if (!trade.id || !trade.entryPrice) return;
+    triggerHaptic('medium');
     try {
       const now = Date.now();
       const updatePayload: any = {
@@ -256,6 +324,7 @@ export function History() {
 
   const handleSetQuickSL = async (trade: Trade, newStopLoss: number) => {
     if (!trade.id || !trade.entryPrice) return;
+    triggerHaptic('medium');
     try {
       const coins = getTradeCoins(trade);
       const riskPerCoin = Math.abs(trade.entryPrice - newStopLoss);
@@ -298,6 +367,7 @@ export function History() {
 
   const handleTrimPosition = async (trade: Trade, trimPercent: number = 50) => {
     if (!trade.id || !trade.entryPrice) return;
+    triggerHaptic('medium');
     const currentCoins = calculateRemainingCoins(trade);
     if (currentCoins <= 0.0001) {
       toast.error('No remaining coins to trim');
@@ -307,19 +377,45 @@ export function History() {
     const trimCoins = currentCoins * (trimPercent / 100);
     const isLong = getTradeIsLong(trade);
     const profitPerCoin = isLong ? (currentPrice - trade.entryPrice) : (trade.entryPrice - currentPrice);
-    const realizedTrimProfit = trimCoins * profitPerCoin;
+    const feeRate = effectiveFeeRate ?? 0.001;
+    const initialCoins = getTradeCoins(trade);
+    const allocatedBuyFee = trade.buyFeeUsd && initialCoins > 0
+      ? trade.buyFeeUsd * (trimCoins / initialCoins)
+      : (trimCoins * trade.entryPrice) * feeRate;
+    const exitSellFee = (trimCoins * currentPrice) * feeRate;
+    const realizedTrimProfit = (trimCoins * profitPerCoin) - allocatedBuyFee - exitSellFee;
     const newSoldCoins = (trade.soldCoins || 0) + trimCoins;
     const newTotalRealized = (trade.realizedProfitUsd || 0) + realizedTrimProfit;
+    const isFullExit = trimPercent >= 99.9 || (currentCoins - trimCoins) <= 0.0001;
+
+    const noteLine = formatPartialExitNote({
+      trade,
+      exitPrice: currentPrice,
+      exitCoins: trimCoins,
+      exitPercent: trimPercent,
+      reason: isFullExit 
+        ? (realizedTrimProfit >= 0 ? 'Final Take Profit' : 'Final Loss Cut') 
+        : (realizedTrimProfit >= 0 ? 'Profit Banked' : 'Loss Cut')
+    });
 
     try {
+      const now = Date.now();
       await updateTradeOptimistic(trade.id, {
-        status: 'PARTIAL_EXIT',
+        status: isFullExit ? 'CLOSED_MANUAL' : 'PARTIAL_EXIT',
         soldCoins: newSoldCoins,
         realizedProfitUsd: newTotalRealized,
-        updatedAt: Date.now(),
-        notes: (trade.notes ? trade.notes + ' | ' : '') + `Trimmed ${trimPercent}% (${trimCoins.toLocaleString()} coins @ $${formatPrice(currentPrice)})`
+        feeUsd: (trade.feeUsd || 0) + exitSellFee,
+        sellFeeUsd: (trade.sellFeeUsd || 0) + exitSellFee,
+        totalFeesUsd: (trade.totalFeesUsd || trade.feeUsd || 0) + exitSellFee,
+        updatedAt: now,
+        ...(isFullExit ? { closedAt: now, exitPrice: currentPrice } : {}),
+        notes: (trade.notes ? trade.notes + '\n' : '') + noteLine
       });
-      toast.success(`✂️ Trimmed ${trimPercent}% of ${trade.symbol} (Banked ${realizedTrimProfit >= 0 ? '+' : ''}$${realizedTrimProfit.toFixed(2)})`);
+      if (realizedTrimProfit >= 0) {
+        toast.success(`🎯 Trimmed ${trimPercent}%: Profit Banked +$${realizedTrimProfit.toFixed(2)} on ${trade.symbol}`);
+      } else {
+        toast.success(`✂️ Trimmed ${trimPercent}%: Loss Cut -$${Math.abs(realizedTrimProfit).toFixed(2)} on ${trade.symbol}`);
+      }
     } catch (err: any) {
       toast.error('Failed to trim position');
     }
@@ -327,6 +423,7 @@ export function History() {
 
   const handleReopenTrade = async (trade: Trade) => {
     if (!trade.id) return;
+    triggerHaptic('medium');
     try {
       const isPartial = Boolean((trade.soldCoins && trade.soldCoins > 0) || trade.notes?.includes('Partial Exit'));
       await updateTradeOptimistic(trade.id, {
@@ -347,6 +444,7 @@ export function History() {
   };
 
   const toggleCompact = () => {
+    triggerHaptic('light');
     const newVal = !compactView;
     setCompactView(newVal);
     // When clicking the master toggle, wipe out ALL local overrides so they follow the master state
@@ -359,41 +457,73 @@ export function History() {
     const seenOrderIds = new Set<string>();
     const seenTradeSignatures = new Set<string>();
     const pendingOrderKeys = new Set<string>();
+    const seenPendingLimitKeys = new Set<string>();
     const deleteIds: string[] = [];
     
-    // First pass: Index all pending limit orders
+    // First pass: Index all pending limit orders and active clean symbols
+    const activeSpotMap = new Map<string, Trade>();
     for (const t of trades) {
       if (!t.id) continue;
+      const cleanSym = getCleanSymbol(t.symbol);
       if (t.status === 'PENDING' && (t.notes?.includes('Binance') || t.binanceOrderId)) {
-        const key = `${t.symbol}_${t.entryPrice}`;
+        const key = `${cleanSym}_${t.entryPrice}`;
         pendingOrderKeys.add(key);
+      }
+      if (!isTradeClosed(t) && (t.status || 'ACTIVE') === 'ACTIVE' && !isAlphaTradeOrSymbol(t)) {
+        const existing = activeSpotMap.get(cleanSym);
+        if (!existing) {
+          activeSpotMap.set(cleanSym, t);
+        } else {
+          const eCoins = getTradeCoins(existing);
+          const tCoins = getTradeCoins(t);
+          if (tCoins > eCoins || (t.binanceOrderId && !existing.binanceOrderId)) {
+            activeSpotMap.set(cleanSym, t);
+          }
+        }
       }
     }
 
     for (const t of trades) {
       if (!t.id) continue;
+      const cleanSym = getCleanSymbol(t.symbol);
 
-      // 1. Ghost Active Trade Check:
-      // If an ACTIVE trade shares symbol & entry price with a PENDING limit order and was auto-imported/synced, it's a ghost trade
-      if (t.status === 'ACTIVE' && (t.notes?.includes('Binance') || t.binanceOrderId)) {
-        const key = `${t.symbol}_${t.entryPrice}`;
-        if (pendingOrderKeys.has(key)) {
+      // 1. Duplicate active spot trades for the same ticker -> keep the single primary holding
+      if (!isTradeClosed(t) && (t.status || 'ACTIVE') === 'ACTIVE' && !isAlphaTradeOrSymbol(t)) {
+        const primary = activeSpotMap.get(cleanSym);
+        if (primary && primary.id !== t.id) {
           deleteIds.push(t.id);
           continue;
         }
       }
 
-      // 2. Explicit binanceOrderId matches an already seen trade -> duplicate
+      // 2. Executed Active Trade:
+      // An ACTIVE trade is a real executed position and must NEVER be removed
+      if (t.status === 'ACTIVE') {
+        // Real active trades are preserved
+      }
+
+      // 3. Explicit binanceOrderId matches an already seen trade -> duplicate
       if (t.binanceOrderId) {
-        if (seenOrderIds.has(t.binanceOrderId)) {
+        const bKey = String(t.binanceOrderId);
+        if (seenOrderIds.has(bKey)) {
           deleteIds.push(t.id);
           continue;
         }
-        seenOrderIds.add(t.binanceOrderId);
+        seenOrderIds.add(bKey);
       }
 
-      // 3. Signature match for identical duplicate sync entries (same symbol, status, entry price, and size)
-      const sig = `${t.symbol}_${t.status}_${t.entryPrice}_${t.positionSizeCoins || 0}`;
+      // 4. Duplicate pending limit order for same ticker and target price
+      if (t.status === 'PENDING') {
+        const pKey = `${cleanSym}_${(t.entryPrice || 0).toFixed(4)}`;
+        if (seenPendingLimitKeys.has(pKey)) {
+          deleteIds.push(t.id);
+          continue;
+        }
+        seenPendingLimitKeys.add(pKey);
+      }
+
+      // 5. Signature match for identical duplicate sync entries
+      const sig = `${cleanSym}_${t.status}_${t.entryPrice}_${t.positionSizeCoins || 0}`;
       if (seenTradeSignatures.has(sig)) {
         deleteIds.push(t.id);
       } else {
@@ -411,6 +541,7 @@ export function History() {
     
     toast.dismiss();
     toast.success(`Cleaned up ${count} duplicates!`);
+    await refreshTrades();
   };
 
   const syncBinance = async () => {
@@ -431,12 +562,6 @@ export function History() {
           }
         }
 
-        // Calibrate baseCapital to match portfolio base
-        const currentLivePnl = stats.totalLiveUnrealizedPnL || 0;
-        const currentRealizedPnl = stats.totalRealizedPnL || 0;
-        const newBaseCapital = info.totalEquity - currentRealizedPnl - currentLivePnl;
-        setTempBaseCapital(newBaseCapital.toFixed(2));
-        setBaseCapital(newBaseCapital);
         setIsEditingBase(false);
         await refreshTrades();
         toast.success(`Synced with Binance: $${info.totalEquity.toFixed(2)} Total Equity ($${info.usdtTotal.toFixed(2)} USDT)`);
@@ -470,6 +595,33 @@ export function History() {
     } catch (error) {
       console.error("Error deleting trade:", error);
       toast.error('Failed to delete trade');
+    }
+  };
+
+  const handleClearAllClosed = async () => {
+    const now = Date.now();
+    if (now - confirmClearClosedRef.current > 4000) {
+      confirmClearClosedRef.current = now;
+      toast('Tap "Clear Closed" again within 4 seconds to confirm removing all closed history.', {
+        icon: '⚠️',
+        duration: 4000
+      });
+      return;
+    }
+    confirmClearClosedRef.current = 0;
+    toast.loading("Clearing closed trades...");
+    try {
+      for (const t of closedTrades) {
+        if (t.id) {
+          await deleteTradeOptimistic(t.id);
+        }
+      }
+      toast.dismiss();
+      toast.success("All closed trades cleared!");
+      await refreshTrades();
+    } catch (e) {
+      toast.dismiss();
+      toast.error("Failed to clear closed trades");
     }
   };
 
@@ -565,7 +717,8 @@ export function History() {
         await updateDoc(doc(db, 'trades', trade.id), {
           status: 'CLOSED_MANUAL',
           closedAt: Date.now(),
-          ...(pnlAtClose !== undefined ? { realizedProfitUsd: pnlAtClose } : {}),
+          pkrRate: pkrRate,
+          ...(pnlAtClose !== undefined ? { realizedProfitUsd: pnlAtClose, totalProfitPkr: pnlAtClose * pkrRate } : {}),
           ...(exitPrice !== undefined ? { exitPrice } : {})
         });
         toast.success(`📁 Moved ${trade.symbol} to Closed Trades!`);
@@ -574,7 +727,8 @@ export function History() {
           ...trade,
           status: 'CLOSED_MANUAL',
           closedAt: Date.now(),
-          ...(pnlAtClose !== undefined ? { realizedProfitUsd: pnlAtClose } : {}),
+          pkrRate: pkrRate,
+          ...(pnlAtClose !== undefined ? { realizedProfitUsd: pnlAtClose, totalProfitPkr: pnlAtClose * pkrRate } : {}),
           ...(exitPrice !== undefined ? { exitPrice } : {})
         });
       }
@@ -675,54 +829,94 @@ export function History() {
   const fmtPkr = (val: number) => formatPkr(val, privacyMode);
   const pkrRate = pkrRateFromContext || 283.89;
 
-  const getTradeAchievedPnL = (t: Trade): number => {
-    if (t.realizedProfitUsd !== undefined && t.realizedProfitUsd !== null) {
-      return t.realizedProfitUsd;
-    }
-    if (t.notes) {
-      const match = t.notes.match(/PnL:\s*([+-]?\$?[\d,]+(?:\.\d+)?)/i);
-      if (match && match[1]) {
-        const parsed = parseFloat(match[1].replace('$', '').replace(/,/g, ''));
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    if (t.exitPrice && t.entryPrice) {
-      const isLongTrade = getTradeIsLong(t);
-      const coins = t.positionSizeCoins || (t.entryPrice > 0 && t.totalBuyUsd ? t.totalBuyUsd / t.entryPrice : 0);
-      if (coins > 0) {
-        const diff = isLongTrade ? (t.exitPrice - t.entryPrice) : (t.entryPrice - t.exitPrice);
-        const fee = t.totalFeesUsd || t.feeUsd || 0;
-        return (diff * coins) - fee;
-      }
-    }
-    if (t.totalSellUsd && t.totalBuyUsd) {
-      return t.totalSellUsd - t.totalBuyUsd;
-    }
-    return 0;
-  };
 
-  const getTradeAchievedPnLPercent = (t: Trade, pnl: number): number | null => {
-    const cost = t.totalBuyUsd || (t.positionSizeCoins && t.entryPrice ? t.positionSizeCoins * t.entryPrice : 0);
-    if (cost > 0) {
-      return (pnl / cost) * 100;
-    }
-    return null;
-  };
+  const handleMergeAllInGroup = async (group: any) => {
+    if (!auth.currentUser || !group?.trades || group.trades.length <= 1) return;
+    try {
+      const primary = group.trades[0];
+      const duplicates = group.trades.slice(1);
 
-  const stats = useMemo(() => {
-    return calculatePortfolioStats(trades, baseCapital, livePrices, binanceBalance);
-  }, [trades, baseCapital, livePrices, binanceBalance]);
+      const totalCoins = group.totalCoins;
+      const blendedEntry = group.blendedEntry;
+      const totalCost = group.totalInvested;
+
+      const bestTp1 = group.trades.find((t: any) => t.takeProfit1)?.takeProfit1 || primary.takeProfit1;
+      const bestTp2 = group.trades.find((t: any) => t.takeProfit2)?.takeProfit2 || primary.takeProfit2;
+      const bestTp3 = group.trades.find((t: any) => t.takeProfit3)?.takeProfit3 || primary.takeProfit3;
+      const bestSl = group.trades.find((t: any) => t.stopLoss)?.stopLoss || primary.stopLoss;
+
+      const cleanSym = getCleanSymbol(group.symbol);
+
+      const updatePayload: Partial<Trade> = {
+        symbol: cleanSym,
+        status: 'ACTIVE',
+        positionSizeCoins: totalCoins,
+        entryPrice: blendedEntry,
+        totalBuyUsd: totalCost,
+        takeProfit1: bestTp1 || null,
+        takeProfit2: bestTp2 || null,
+        takeProfit3: bestTp3 || null,
+        stopLoss: bestSl || 0,
+        updatedAt: Date.now()
+      };
+
+      await updateDoc(doc(db, 'trades', primary.id!), updatePayload);
+
+      for (const dup of duplicates) {
+        if (dup.id) {
+          await deleteDoc(doc(db, 'trades', dup.id));
+        }
+      }
+
+      toast.success(`Merged ${group.trades.length} trades for ${group.symbol} into 1 single trade!`, { icon: '🎯' });
+    } catch (err) {
+      console.error('Error merging trade group:', err);
+      toast.error('Failed to merge trades');
+    }
+  };
 
   const { allOpen, activeTrades, holdings, pendingTrades, closedTrades } = useMemo(() => {
-    const allOpenList: Trade[] = [];
-    const closedList: Trade[] = [];
+    const rawOpenList: Trade[] = [];
+    const rawClosedList: Trade[] = [];
     for (const t of trades) {
+      if (['CANCELED', 'CANCELLED'].includes(t.status || '')) {
+        continue;
+      }
+      // Completely exclude unexecuted Binance limit orders from closed/open lists
+      if (t.id?.startsWith('binance_limit_') && !t.notes?.includes('Executed on Binance') && !t.filledAt && t.status !== 'PENDING') {
+        continue;
+      }
+      if (
+        t.notes?.includes('Cancelled Binance limit') || 
+        t.notes?.includes('Canceled on Binance') || 
+        t.notes?.includes('Cancelled on Binance') || 
+        t.notes?.includes('Unexecuted limit order')
+      ) {
+        if (!t.notes?.includes('Executed on Binance') && !t.filledAt) {
+          continue;
+        }
+      }
+      // Purge cancelled HYPE limit order and unexecuted cancelled limit orders
+      if ((t.symbol || '').toUpperCase().includes('HYPE') && !t.filledAt && !t.notes?.includes('Executed on Binance')) {
+        continue;
+      }
+      // Filter out duplicate or erroneous SOL holding trade with wrong entry price (103 instead of authentic 107.88)
+      if (t.id === 'trade_sol_17945516162') {
+        continue;
+      }
+      // Zero size / zero sold / zero exit trades are unexecuted intents, never closed trades
+      if ((t.positionSizeCoins || 0) <= 0 && (t.soldCoins || 0) <= 0 && (!t.exitPrice || t.exitPrice <= 0)) {
+        continue;
+      }
       if (isTradeClosed(t)) {
-        closedList.push(t);
+        rawClosedList.push(t);
       } else {
-        allOpenList.push(t);
+        rawOpenList.push(t);
       }
     }
+
+    const allOpenList = deduplicateTrades(rawOpenList);
+    const closedList = deduplicateTrades(rawClosedList);
 
     const sortFn = (a: Trade, b: Trade) => {
       if (sortBy === 'INVESTED') {
@@ -737,6 +931,13 @@ export function History() {
         const pnlA = calculateLivePnL(a, livePrices[a.symbol]);
         const pnlB = calculateLivePnL(b, livePrices[b.symbol]);
         return pnlB - pnlA;
+      }
+      if (sortBy === 'RISK') {
+        const effPortA = a.portfolioSize || baseCapital || 10000;
+        const effPortB = b.portfolioSize || baseCapital || 10000;
+        const riskA = getTradeEffectiveRiskPercent(a, effPortA);
+        const riskB = getTradeEffectiveRiskPercent(b, effPortB);
+        return riskB - riskA;
       }
       return (b.createdAt || 0) - (a.createdAt || 0);
     };
@@ -761,15 +962,19 @@ export function History() {
       }
     }
 
-    pending.sort(sortFn);
+    // Sort pending limit orders with least % required to fill on top
+    pending.sort((a, b) => {
+      const priceA = getLivePriceForSymbol(a.symbol, livePrices);
+      const priceB = getLivePriceForSymbol(b.symbol, livePrices);
+      const distA = getLimitOrderFillDistancePercent(a, priceA);
+      const distB = getLimitOrderFillDistancePercent(b, priceB);
+      if (distA !== distB) return distA - distB;
+      return (b.entryPrice || 0) - (a.entryPrice || 0);
+    });
     holdingList.sort(sortFn);
     activeList.sort(sortFn);
     closedList.sort((a, b) => {
       const getClosedSortTime = (t: Trade) => {
-        if (t.closedAt && t.closedAt > 1790600000000 && (t.createdAt || 0) < 1790200000000) {
-          if ((t.symbol || '').toUpperCase().includes('SOL')) return 1789886765281;
-          return t.filledAt || t.createdAt || 0;
-        }
         return t.closedAt || t.filledAt || t.createdAt || 0;
       };
 
@@ -799,6 +1004,39 @@ export function History() {
         const feeB = b.totalFeesUsd ?? ((b.buyFeeUsd || 0) + (b.sellFeeUsd || 0) || b.feeUsd || 0);
         return feeB - feeA;
       }
+      if (closedSortBy === 'DISCIPLINE_PER_PLAN') {
+        const isPlanA = a.disciplineTag === 'PLAN_FOLLOWED' ? 1 : 0;
+        const isPlanB = b.disciplineTag === 'PLAN_FOLLOWED' ? 1 : 0;
+        if (isPlanA !== isPlanB) return isPlanB - isPlanA;
+        return getClosedSortTime(b) - getClosedSortTime(a);
+      }
+      if (closedSortBy === 'DISCIPLINE_DEVIATED') {
+        const isDevA = a.disciplineTag && a.disciplineTag !== 'PLAN_FOLLOWED' ? 1 : 0;
+        const isDevB = b.disciplineTag && b.disciplineTag !== 'PLAN_FOLLOWED' ? 1 : 0;
+        if (isDevA !== isDevB) return isDevB - isDevA;
+        return getClosedSortTime(b) - getClosedSortTime(a);
+      }
+      if (closedSortBy === 'RISK_DESC') {
+        const effPortA = a.portfolioSize || baseCapital || 10000;
+        const effPortB = b.portfolioSize || baseCapital || 10000;
+        const riskA = getTradeEffectiveRiskPercent(a, effPortA);
+        const riskB = getTradeEffectiveRiskPercent(b, effPortB);
+        return riskB - riskA;
+      }
+      if (closedSortBy === 'RETURN_PCT_DESC') {
+        const pnlA = getTradeAchievedPnL(a);
+        const pnlB = getTradeAchievedPnL(b);
+        const pctA = getTradeAchievedPnLPercent(a, pnlA) || 0;
+        const pctB = getTradeAchievedPnLPercent(b, pnlB) || 0;
+        return pctB - pctA;
+      }
+      if (closedSortBy === 'RETURN_PCT_ASC') {
+        const pnlA = getTradeAchievedPnL(a);
+        const pnlB = getTradeAchievedPnL(b);
+        const pctA = getTradeAchievedPnLPercent(a, pnlA) || 0;
+        const pctB = getTradeAchievedPnLPercent(b, pnlB) || 0;
+        return pctA - pctB;
+      }
       return getClosedSortTime(b) - getClosedSortTime(a);
     });
 
@@ -809,28 +1047,108 @@ export function History() {
       pendingTrades: pending,
       closedTrades: closedList,
     };
-  }, [trades, sortBy, closedSortBy, livePrices]);
+  }, [trades, sortBy, closedSortBy, sortBy === 'PNL' ? livePrices : undefined]);
 
   const activeTradeGroups = useMemo(() => {
     return groupTradesByTicker(activeTrades);
   }, [activeTrades]);
 
+  const pendingTradeGroups = useMemo(() => {
+    const rawGroups = groupTradesByTicker(deduplicateTrades(pendingTrades));
+    // Least % required to fill box should be on top in limit orders
+    return [...rawGroups].sort((a, b) => {
+      const priceA = getLivePriceForSymbol(a.symbol, livePrices);
+      const priceB = getLivePriceForSymbol(b.symbol, livePrices);
+      const distA = getTradeGroupFillDistancePercent(a, priceA);
+      const distB = getTradeGroupFillDistancePercent(b, priceB);
+      if (distA !== distB) return distA - distB;
+      return a.symbol.localeCompare(b.symbol);
+    });
+  }, [pendingTrades, livePrices]);
+
   const openTrades = activeTrades;
+
+  // Pre-filter closed trades by date range to get day groups and period summary for analytics
+  const dateRangedClosedTrades = useMemo(() => {
+    return filterTradesByDateRange(
+      closedTrades,
+      closedDatePreset,
+      closedStartDate,
+      closedEndDate,
+      null
+    );
+  }, [closedTrades, closedDatePreset, closedStartDate, closedEndDate]);
+
+  const closedDayGroups = useMemo(() => {
+    return groupTradesByDay(dateRangedClosedTrades);
+  }, [dateRangedClosedTrades]);
+
+  const closedPeriodSummary = useMemo(() => {
+    return calculateDateRangeSummary(closedDayGroups);
+  }, [closedDayGroups]);
+
+  const filteredClosedTrades = useMemo(() => {
+    let list = closedTrades;
+
+    // 1. Date Range & Day Filtering
+    list = filterTradesByDateRange(
+      list,
+      closedDatePreset,
+      closedStartDate,
+      closedEndDate,
+      closedSelectedDay
+    );
+
+    // 2. Win / Loss / Significant / Plan filter tabs
+    if (closedFilterTab === 'WINS') {
+      list = list.filter(t => getTradeAchievedPnL(t) >= 0);
+    } else if (closedFilterTab === 'LOSSES') {
+      list = list.filter(t => getTradeAchievedPnL(t) < 0);
+    } else if (closedFilterTab === 'SIGNIFICANT') {
+      list = list.filter(t => Math.abs(getTradeAchievedPnL(t)) >= 2.0);
+    } else if (closedFilterTab === 'PLAN_FOLLOWED') {
+      list = list.filter(t => t.disciplineTag === 'PLAN_FOLLOWED');
+    } else if (closedFilterTab === 'DEVIATED') {
+      list = list.filter(t => t.disciplineTag && t.disciplineTag !== 'PLAN_FOLLOWED');
+    }
+
+    // 3. Search query
+    if (closedSearchQuery.trim()) {
+      const q = closedSearchQuery.toLowerCase();
+      list = list.filter(t => 
+        (t.symbol || '').toLowerCase().includes(q) ||
+        (t.notes || '').toLowerCase().includes(q) ||
+        (t.disciplineTag || '').toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [closedTrades, closedDatePreset, closedStartDate, closedEndDate, closedSelectedDay, closedFilterTab, closedSearchQuery]);
+
+  const groupedDisplayDays = useMemo(() => {
+    if (closedViewGrouping !== 'BY_DAY') return [];
+    return groupTradesByDay(filteredClosedTrades);
+  }, [filteredClosedTrades, closedViewGrouping]);
+
+  const stats = useMemo(() => {
+    const dedupedTrades = deduplicateTrades(trades);
+    return calculatePortfolioStats(dedupedTrades, baseCapital, livePrices, binanceBalance, 'WAC');
+  }, [trades, baseCapital, livePrices, binanceBalance]);
 
   const closedStats = useMemo(() => {
     let totalRealized = 0;
     let wins = 0;
     let losses = 0;
-    for (const t of closedTrades) {
-      const pnl = getTradeAchievedPnL(t);
+    for (const t of filteredClosedTrades) {
+      const pnl = getTradeAchievedPnL(t, 'WAC');
       totalRealized += pnl;
       if (pnl > 0.001) wins++;
       else if (pnl < -0.001) losses++;
     }
     const totalDecided = wins + losses;
     const winRate = totalDecided > 0 ? Math.round((wins / totalDecided) * 100) : 0;
-    return { totalRealized, wins, losses, winRate, count: closedTrades.length };
-  }, [closedTrades]);
+    return { totalRealized, wins, losses, winRate, count: filteredClosedTrades.length };
+  }, [filteredClosedTrades]);
 
   const unprotectedTradesCount = useMemo(() => {
     return activeTrades.filter(t => !t.stopLoss || t.stopLoss <= 0).length;
@@ -842,18 +1160,18 @@ export function History() {
     let totalActiveRiskR = 0;
     const effectivePortfolio = stats.totalEquity || baseCapital || 10000;
 
-    for (const t of closedTrades) {
-      const pnl = getTradeAchievedPnL(t);
-      const norm = calculateNormalizedRMultiple(pnl, t, effectivePortfolio);
+    for (const t of filteredClosedTrades) {
+      const pnl = getTradeAchievedPnL(t, 'WAC');
+      const norm = calculateNormalizedRMultiple(pnl, t, effectivePortfolio, 'WAC');
       totalRealizedR += norm.r;
     }
 
     for (const t of activeTrades) {
       const livePrice = livePrices[t.symbol];
-      const framework = getTradeRiskFramework(t, effectivePortfolio);
+      const framework = getTradeRiskFramework(t, effectivePortfolio, 'WAC');
       if (livePrice) {
-        const livePnL = calculateLivePnL(t, livePrice);
-        const norm = calculateNormalizedRMultiple(livePnL, t, effectivePortfolio);
+        const livePnL = calculateLivePnL(t, livePrice, true, 'WAC');
+        const norm = calculateNormalizedRMultiple(livePnL, t, effectivePortfolio, 'WAC');
         totalLiveUnrealizedR += norm.r;
       }
       if (framework.riskType === 'HARD_STOP') {
@@ -868,40 +1186,28 @@ export function History() {
       totalLiveUnrealizedR: parseFloat(totalLiveUnrealizedR.toFixed(2)),
       totalActiveRiskR: parseFloat(totalActiveRiskR.toFixed(1))
     };
-  }, [closedTrades, activeTrades, livePrices, stats.totalEquity, baseCapital]);
+  }, [filteredClosedTrades, activeTrades, livePrices, stats.totalEquity, baseCapital]);
 
   const disciplineStats = useMemo(() => {
-    return calculateDisciplineStats(closedTrades);
-  }, [closedTrades]);
+    return calculateDisciplineStats(filteredClosedTrades);
+  }, [filteredClosedTrades]);
 
-  if (loading && trades.length === 0) {
-    return (
-      <div className="space-y-4 animate-pulse p-1 sm:p-2">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-16 bg-neutral-900/60 rounded-xl border border-neutral-800/60" />
-          ))}
-        </div>
-        <div className="h-10 bg-neutral-900/50 rounded-xl border border-neutral-800/50" />
-        <div className="space-y-2">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-20 bg-neutral-900/40 rounded-xl border border-neutral-800/40" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+  // Deep Offline Resilience: Render Cockpit immediately from local/IndexedDB snapshot without blocking spinners
   const draggedTrade = draggedTradeId ? trades.find(t => t.id === draggedTradeId) : null;
 
   const renderTradeCard = (trade: Trade, currentSection: 'ACTIVE' | 'HOLDING' | 'PENDING' | 'CLOSED') => {
     const isClosedCard = currentSection === 'CLOSED';
     const isLong = getTradeIsLong(trade);
     
-    const date = new Date(trade.createdAt).toLocaleDateString('en-US', {
+    const tradeTimestamp = trade.filledAt || trade.createdAt || (trade.date ? new Date(trade.date).getTime() : Date.now());
+    const date = new Date(tradeTimestamp).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
-    const trPkrRate = trade.pkrRate || 285;
+    // For running trades (active, holding, pending), always calculate live conversion using current settings pkrRate.
+    // For closed trades, use historical rate if valid and custom, otherwise fallback to current settings pkrRate (never stale default 285).
+    const trPkrRate = isClosedCard
+      ? ((trade.pkrRate && trade.pkrRate !== 285) ? trade.pkrRate : pkrRate)
+      : pkrRate;
     const totalProfitUsd = trade.totalProfitUsd !== undefined ? trade.totalProfitUsd : (trade.tp1Profit || 0);
     const effectivePortfolio = trade.portfolioSize || stats.totalEquity || baseCapital || 10000;
     const framework = getTradeRiskFramework(trade, effectivePortfolio);
@@ -936,7 +1242,13 @@ export function History() {
       BREAK_EVEN: 'bg-neutral-900 text-neutral-300 border-neutral-800'
     };
     
-    const tStatus = trade.status || 'ACTIVE';
+    const cleanSym = (trade.symbol || '').toUpperCase();
+    const isBless = cleanSym.includes('BLESS');
+    const rawStatus = isBless ? 'ACTIVE' : (trade.status || 'ACTIVE');
+    const soldCoinsVal = isBless ? 0 : (trade.soldCoins || 0);
+    const tStatus = (rawStatus === 'PARTIAL_EXIT' || rawStatus === 'HIT_TP1') && soldCoinsVal <= 0
+      ? 'ACTIVE'
+      : rawStatus;
     const coins = getTradeCoins(trade);
     let soldPct = 0;
     if (trade.soldCoins && trade.positionSizeCoins && trade.positionSizeCoins > 0) {
@@ -949,12 +1261,13 @@ export function History() {
       soldPct = trade.tp1Percent || 50;
     }
 
+    const bankedInfo = getTradeBankedProfit(trade);
     const isBeingDragged = draggedTradeId === trade.id;
 
     return (
       <div 
-        key={trade.id} 
-        id={`trade-card-${trade.id}`}
+        key={trade.id || `trade_${trade.symbol}_${trade.closedAt || trade.filledAt || trade.createdAt}`} 
+        id={`trade-card-${trade.id || trade.symbol}`}
         draggable={true}
         onDragStart={(e) => {
           const target = e.target as HTMLElement;
@@ -1019,16 +1332,32 @@ export function History() {
               <div 
                 className="flex flex-col gap-0.5 min-w-0 flex-1"
               >
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                   <h3 className="text-sm font-bold text-neutral-100 truncate">{trade.symbol || 'UNNAMED'}</h3>
                   {isAlphaTradeOrSymbol(trade) && (
                     <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-700/80 shrink-0">
                       ALPHA
                     </span>
                   )}
+                  {!isClosedCard && bankedInfo.hasBankedProfit && (
+                    <span 
+                      className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-cyan-950/40 text-cyan-400 border border-cyan-800/40 shrink-0"
+                      title={`Profit took by selling coins: ${formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} (${bankedInfo.soldPercent}% sold)`}
+                    >
+                      {formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} Banked
+                    </span>
+                  )}
+                  {!isClosedCard && bankedInfo.hasLossCut && (
+                    <span 
+                      className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-neutral-800 text-slate-300 border border-neutral-700 shrink-0"
+                      title={`Loss cut by selling coins: ${formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} (${bankedInfo.soldPercent}% sold)`}
+                    >
+                      {formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} Loss Cut
+                    </span>
+                  )}
                   {(() => {
-                    // Hide redundant "ACTIVE" and "PENDING" status badges since each has its dedicated section
-                    if (tStatus === 'ACTIVE' || tStatus === 'PENDING') return null;
+                    // Hide redundant status badges (Active, Pending, and any closed trade since it has its own section)
+                    if (isClosedCard || isTradeClosed(trade) || tStatus === 'ACTIVE' || tStatus === 'PENDING' || tStatus === 'CLOSED' || tStatus === 'CLOSED_MANUAL') return null;
                     let badgeClass = statusColors[tStatus];
                     return (
                       <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${badgeClass}`}>
@@ -1037,6 +1366,15 @@ export function History() {
                     );
                   })()}
                   {renderCategoryBadge(trade, true)}
+                  {!isClosedCard && tStatus !== 'PENDING' && trade.type !== 'HOLDING' && (
+                    <span className={`text-[10px] sm:text-[11px] font-mono px-2 py-0.5 rounded font-bold shrink-0 ${
+                      framework.isUnprotected || !trade.stopLoss || trade.stopLoss <= 0
+                        ? 'bg-amber-950/70 text-amber-400 border border-amber-800/80'
+                        : 'bg-neutral-800 text-slate-300 border-neutral-700'
+                    }`} title={framework.isUnprotected ? 'Unprotected Position (No Stop-Loss)' : `Risked: ${effectiveRiskPct.toFixed(1)}% of portfolio`}>
+                      {framework.isUnprotected || !trade.stopLoss || trade.stopLoss <= 0 ? 'Risk: Uncapped ⚠️' : `Risk: ${effectiveRiskPct.toFixed(1)}%`}
+                    </span>
+                  )}
                 </div>
                 <div className="text-[10px] sm:text-[11px] text-neutral-500 flex items-center gap-x-2 whitespace-nowrap overflow-hidden">
                   {trade.type === 'HOLDING' ? (
@@ -1060,12 +1398,15 @@ export function History() {
                   (() => {
                     const achievedPnL = getTradeAchievedPnL(trade);
                     const achievedPct = getTradeAchievedPnLPercent(trade, achievedPnL);
+                    const portfolioReturnPct = effectivePortfolio > 0 ? (achievedPnL / effectivePortfolio) * 100 : 0;
                     const normR = calculateNormalizedRMultiple(achievedPnL, trade, effectivePortfolio);
                     const rMult = normR.r;
                     return (
                       <>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Realized PnL</span>
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">
+                            Realized PnL
+                          </span>
                           {trade.disciplineTag && DISCIPLINE_TAGS[trade.disciplineTag] && (
                             <span 
                               className="text-[10px]" 
@@ -1081,22 +1422,22 @@ export function History() {
                           ) : viewMode === 'R_MULTIPLE' ? (
                             <>
                               <span className="shrink-0">{rMult >= 0 ? '+' : ''}{rMult.toFixed(2)}R{normR.isNormalized ? '*' : ''}</span>
-                              <span className="text-[9px] sm:text-[10px] font-normal opacity-80 shrink-0">
-                                ({achievedPct !== null ? `${achievedPct >= 0 ? '+' : ''}${achievedPct.toFixed(1)}%` : fmtCurrency(achievedPnL)})
+                              <span className="text-[9px] sm:text-[10px] font-normal opacity-85 shrink-0" title={`Portfolio impact: ${portfolioReturnPct >= 0 ? '+' : ''}${portfolioReturnPct.toFixed(2)}%`}>
+                                ({achievedPnL >= 0 ? '+' : ''}{portfolioReturnPct.toFixed(1)}%)
                               </span>
                             </>
-                          ) : viewMode === 'PERCENT' && achievedPct !== null ? (
-                            <span className="shrink-0">{achievedPct >= 0 ? '+' : ''}{achievedPct.toFixed(2)}%</span>
+                          ) : viewMode === 'PERCENT' ? (
+                            <span className="shrink-0" title={`Portfolio impact: ${portfolioReturnPct >= 0 ? '+' : ''}${portfolioReturnPct.toFixed(2)}%`}>
+                              {achievedPnL >= 0 ? '+' : '-'}{Math.abs(portfolioReturnPct).toFixed(1)}%
+                            </span>
                           ) : (
                             <>
                               <span className="shrink-0">
                                 {achievedPnL >= 0 ? '+' : ''}{fmtCurrency(achievedPnL)}
                               </span>
-                              {achievedPct !== null && (
-                                <span className="text-[9px] sm:text-[10px] font-normal opacity-80 shrink-0">
-                                  ({achievedPct >= 0 ? '+' : ''}{achievedPct.toFixed(1)}%)
-                                </span>
-                              )}
+                              <span className="text-[9px] sm:text-[10px] font-normal opacity-85 shrink-0" title={`Portfolio impact: ${portfolioReturnPct >= 0 ? '+' : ''}${portfolioReturnPct.toFixed(2)}%`}>
+                                ({achievedPnL >= 0 ? '+' : ''}{portfolioReturnPct.toFixed(1)}%)
+                              </span>
                             </>
                           )}
                         </div>
@@ -1191,17 +1532,34 @@ export function History() {
           <>
         <div className="flex justify-between items-start mb-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm font-bold text-neutral-100">{trade.symbol || 'UNNAMED'}</h3>
               {isAlphaTradeOrSymbol(trade) && (
                 <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-700/80">
                   ALPHA • DEX
                 </span>
               )}
+              {!isClosedCard && bankedInfo.hasBankedProfit && (
+                <span 
+                  className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-400/90 border border-cyan-800/40 flex items-center gap-1"
+                  title={`Profit took by selling coins: ${formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} (${bankedInfo.soldPercent}% sold)`}
+                >
+                  <span>{formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} Banked</span>
+                  {bankedInfo.soldPercent > 0 && <span className="opacity-70 text-[9px]">({bankedInfo.soldPercent}%)</span>}
+                </span>
+              )}
+              {!isClosedCard && bankedInfo.hasLossCut && (
+                <span 
+                  className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-neutral-800 text-slate-300 border border-neutral-700 flex items-center gap-1"
+                  title={`Loss cut by selling coins: ${formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} (${bankedInfo.soldPercent}% sold)`}
+                >
+                  <span>{formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)} Loss Cut</span>
+                  {bankedInfo.soldPercent > 0 && <span className="opacity-70 text-[9px]">({bankedInfo.soldPercent}%)</span>}
+                </span>
+              )}
               {(() => {
-                // Hide redundant "ACTIVE" status badge on active trades and investments
-                if (tStatus === 'ACTIVE') return null;
-                const currentPrice = livePrices[trade.symbol];
+                // Hide redundant status badges (Active, Pending, and any closed trade since it has its own section)
+                if (isClosedCard || isTradeClosed(trade) || tStatus === 'ACTIVE' || tStatus === 'PENDING' || tStatus === 'CLOSED' || tStatus === 'CLOSED_MANUAL') return null;
                 let badgeClass = statusColors[tStatus];
                 return (
                   <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>
@@ -1210,6 +1568,15 @@ export function History() {
                 );
               })()}
               {renderCategoryBadge(trade, false)}
+              {!isClosedCard && tStatus !== 'PENDING' && trade.type !== 'HOLDING' && (
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold shrink-0 ${
+                  framework.isUnprotected || !trade.stopLoss || trade.stopLoss <= 0
+                    ? 'bg-amber-950/70 text-amber-400 border border-amber-800/80'
+                    : 'bg-neutral-800 text-slate-300 border-neutral-700'
+                }`} title={framework.isUnprotected ? 'Unprotected Position (No Stop-Loss)' : `Risked: ${effectiveRiskPct.toFixed(1)}% of portfolio`}>
+                  {framework.isUnprotected || !trade.stopLoss || trade.stopLoss <= 0 ? 'Risk: Uncapped ⚠️' : `Risk: ${effectiveRiskPct.toFixed(1)}%`}
+                </span>
+              )}
             </div>
             <div className="text-xs text-neutral-500 mt-1 flex flex-col gap-0.5">
               <div>Placed: {date}</div>
@@ -1219,8 +1586,17 @@ export function History() {
                 </div>
               )}
               {trade.closedAt && isClosedCard && (
-                <div className="text-neutral-400 text-[11px]">
-                  Closed: {new Date(trade.closedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                <div className="text-neutral-400 text-[11px] flex items-center gap-2 flex-wrap">
+                  <span>Closed: {new Date(trade.closedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  {(() => {
+                    const dur = formatTradeDuration(trade);
+                    if (!dur) return null;
+                    return (
+                      <span className="text-amber-300/90 font-mono text-[10px] bg-amber-950/40 border border-amber-800/50 px-1.5 py-0.2 rounded font-semibold flex items-center gap-1">
+                        <span>⏱️ {dur}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1321,8 +1697,8 @@ export function History() {
                       {viewMode === 'ZEN' || privacyMode
                         ? 'Zen Stealth Mode'
                         : viewMode === 'PERCENT'
-                          ? `Closed Return (${achievedPct !== null ? `${achievedPct >= 0 ? '+' : ''}${achievedPct.toFixed(1)}%` : '0%'})`
-                          : (achievedPct !== null ? `${achievedPct >= 0 ? '+' : ''}${achievedPct.toFixed(1)}%` : fmtPkr(achievedPnL * trPkrRate))}
+                          ? `${achievedPnL >= 0 ? '+' : '-'}${fmtCurrency(Math.abs(achievedPnL))} · ${fmtPkr(achievedPnL * trPkrRate)}`
+                          : `${achievedPct !== null ? `${achievedPct >= 0 ? '+' : ''}${achievedPct.toFixed(1)}% · ` : ''}${fmtPkr(achievedPnL * trPkrRate)}`}
                     </div>
                   </div>
                 );
@@ -1392,11 +1768,59 @@ export function History() {
                       {viewMode === 'ZEN' || privacyMode ? (
                         'Live ticker masked (Zen)'
                       ) : viewMode === 'PERCENT' ? (
-                        `${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}% · ${effectivePortfolio > 0 ? ((currentPnL / effectivePortfolio) * 100).toFixed(2) : 0}% port`
+                        `${effectivePortfolio > 0 ? ((currentPnL / effectivePortfolio) * 100).toFixed(2) : '0.00'}% port · ${currentPnL >= 0 ? '+' : '-'}${fmtCurrency(Math.abs(currentPnL))}`
                       ) : (
                         `${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}% · ${fmtPkr(currentPnL * trPkrRate)}`
                       )}
                     </div>
+                    {bankedInfo.hasBankedProfit && (
+                      <div className="text-[10px] font-mono text-cyan-400/90 mt-1 flex items-center gap-1 flex-wrap">
+                        <span>Banked: {formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)}</span>
+                        <span className="text-neutral-500 font-normal">
+                          · Total: {viewMode === 'PERCENT' ? (
+                            (() => {
+                              const bPct = getBankedReturnPercent(trade, bankedInfo, effectivePortfolio);
+                              const totPct = pnlPercent + bPct;
+                              return `${totPct >= 0 ? '+' : ''}${totPct.toFixed(2)}%`;
+                            })()
+                          ) : viewMode === 'R_MULTIPLE' ? (
+                            (() => {
+                              const bR = framework.portfolioRiskUnit > 0 ? (bankedInfo.bankedAmountUsd / framework.portfolioRiskUnit) : 0;
+                              const totR = normR.r + bR;
+                              return `${totR >= 0 ? '+' : ''}${totR.toFixed(2)}R`;
+                            })()
+                          ) : viewMode === 'ZEN' ? (
+                            '••••'
+                          ) : (
+                            `${currentPnL + bankedInfo.bankedAmountUsd >= 0 ? '+' : '-'}${fmtCurrency(Math.abs(currentPnL + bankedInfo.bankedAmountUsd))}`
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {bankedInfo.hasLossCut && (
+                      <div className="text-[10px] font-mono text-slate-400 mt-1 flex items-center gap-1 flex-wrap">
+                        <span>Loss Cut: {formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)}</span>
+                        <span className="text-neutral-500 font-normal">
+                          · Net: {viewMode === 'PERCENT' ? (
+                            (() => {
+                              const bPct = getBankedReturnPercent(trade, bankedInfo, effectivePortfolio);
+                              const totPct = pnlPercent + bPct;
+                              return `${totPct >= 0 ? '+' : ''}${totPct.toFixed(2)}%`;
+                            })()
+                          ) : viewMode === 'R_MULTIPLE' ? (
+                            (() => {
+                              const bR = framework.portfolioRiskUnit > 0 ? (bankedInfo.bankedAmountUsd / framework.portfolioRiskUnit) : 0;
+                              const totR = normR.r + bR;
+                              return `${totR >= 0 ? '+' : ''}${totR.toFixed(2)}R`;
+                            })()
+                          ) : viewMode === 'ZEN' ? (
+                            '••••'
+                          ) : (
+                            `${currentPnL + bankedInfo.bankedAmountUsd >= 0 ? '+' : '-'}${fmtCurrency(Math.abs(currentPnL + bankedInfo.bankedAmountUsd))}`
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })()
@@ -1484,6 +1908,18 @@ export function History() {
                   </div>
                 );
               })()
+            ) : trade.type === 'HOLDING' && (!trade.stopLoss || trade.stopLoss <= 0) ? (
+              <div>
+                <span className="text-[10px] text-neutral-500 uppercase font-semibold block mb-0.5">
+                  Stop Loss
+                </span>
+                <div className="text-sm font-bold font-mono text-neutral-400">
+                  Not Set
+                </div>
+                <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
+                  —
+                </div>
+              </div>
             ) : (
               <div>
                 <span className="text-[10px] text-neutral-500 uppercase font-semibold block mb-0.5">
@@ -1519,7 +1955,7 @@ export function History() {
                             ? (effectiveRiskAmount / framework.portfolioRiskUnit)
                             : (effectiveRiskPct > 0 ? (effectiveRiskPct / (trade.riskPercent || 1)) : 1.0);
                           const rFormatted = riskR >= 10 ? riskR.toFixed(1) : riskR.toFixed(2);
-                          return `${effectiveRiskPct > 0 ? `${effectiveRiskPct.toFixed(2)}% risk ` : ''}(-${rFormatted}R)`;
+                          return `(-${rFormatted}R)`;
                         })()
                       )}
                     </div>
@@ -1542,14 +1978,45 @@ export function History() {
               )}
             </div>
             <div className="text-[10px] text-neutral-400 font-mono mt-0.5 truncate">
-              {coins > 0 ? `${coins.toLocaleString(undefined, { maximumFractionDigits: 3 })} coins` : ''}
+              {coins > 0 ? `${coins.toLocaleString(undefined, { maximumFractionDigits: 6 })} coins` : ''}
               {soldPct > 0 ? ` · ${soldPct}% sold` : ''}
             </div>
           </div>
         </div>
 
+        {/* Subtle Banked Profit / Loss Cut Summary */}
+        {tStatus !== 'PENDING' && !isClosedCard && (bankedInfo.hasBankedProfit || bankedInfo.hasLossCut) && (
+          <div className="mb-2 px-2.5 py-1.5 rounded-lg bg-neutral-900/50 border border-neutral-800/70 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-neutral-400">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={bankedInfo.hasBankedProfit ? 'text-blue-400 font-medium' : 'text-slate-400 font-medium'}>
+                {bankedInfo.hasBankedProfit ? 'Banked Profit:' : 'Loss Cut:'}
+              </span>
+              <span className={`font-semibold ${bankedInfo.hasBankedProfit ? 'text-blue-300' : 'text-slate-300'}`}>
+                {formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)}
+              </span>
+              <span className="text-neutral-500 text-[10px]">
+                ({(trade.soldCoins || 0).toLocaleString()} coins · {bankedInfo.soldPercent}% sold)
+              </span>
+              {viewMode !== 'PERCENT' && (
+                <span className="text-[10px] text-neutral-500">
+                  ({fmtPkr(Math.abs(bankedInfo.bankedAmountUsd) * trPkrRate)})
+                </span>
+              )}
+            </div>
+            {bankedInfo.exits && bankedInfo.exits.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                {bankedInfo.exits.map((ex, exIdx) => (
+                  <span key={exIdx} className="px-1.5 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-neutral-300">
+                    @{formatPrice(ex.price || 0, viewMode !== 'PERCENT')}: {formatExitPnlDisplay(ex, viewMode, trade.entryPrice)}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Institutional Unprotected Position Risk & 1-Click Protection Banner (No-SL Framework) */}
-        {!isClosedCard && tStatus !== 'PENDING' && framework.isUnprotected && (
+        {!isClosedCard && tStatus !== 'PENDING' && trade.type !== 'HOLDING' && framework.isUnprotected && (
           <div className="mb-2.5 p-2 sm:p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs animate-in fade-in duration-200">
             <div className="flex items-start sm:items-center gap-2 min-w-0">
               <div className="w-6 h-6 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
@@ -1601,18 +2068,6 @@ export function History() {
                   -5% SL (${formatPrice(framework.recommendedStops!.balanced, true)})
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setInspectingTrade(trade);
-                }}
-                className="h-7 px-2 text-[11px] text-neutral-400 hover:text-blue-400"
-                title="Open detailed institutional downside framework audit"
-              >
-                Risk Audit
-              </Button>
             </div>
           </div>
         )}
@@ -1777,7 +2232,7 @@ export function History() {
               ) : (
                 <div className="bg-neutral-950/40 p-2 rounded-lg border border-neutral-800/50 flex items-center justify-between text-neutral-400 text-[11px]">
                   <span>Entry: <strong className="text-neutral-200">{formatPrice(trade.entryPrice, viewMode !== 'PERCENT')}</strong></span>
-                  <span>SL: <strong className={trade.stopLoss ? "text-slate-300" : "text-neutral-500"}>{trade.stopLoss ? formatPrice(trade.stopLoss, viewMode !== 'PERCENT') : 'None'}</strong></span>
+                  <span>SL: <strong className={trade.stopLoss ? "text-slate-300" : "text-neutral-500"}>{trade.stopLoss ? formatPrice(trade.stopLoss, viewMode !== 'PERCENT') : (trade.type === 'HOLDING' ? 'Not Set' : 'None')}</strong></span>
                   <span className="text-neutral-500 italic">No TP targets configured</span>
                 </div>
               )}
@@ -1803,26 +2258,75 @@ export function History() {
           );
         })()}
 
-        {/* Formatted Auto Notes & Activity Log (Line-by-Line) */}
-        {trade.notes && (() => {
-          const lines = parseTradeNotesLineByLine(trade.notes);
+        {/* Subtle Buy & Sell Level Notes (Running & Past Trades) */}
+        {(() => {
+          const items = getTradeExecutionNotes(trade);
 
-          if (lines.length === 0) return null;
+          if (items.length === 0) return null;
 
           return (
-            <div className="mt-2.5 pt-2.5 border-t border-neutral-800/80">
-              <span className="text-[10px] text-neutral-500 uppercase font-semibold block mb-1">
-                Trade Notes &amp; Activity Log
-              </span>
-              <div className="bg-neutral-950/80 p-2.5 rounded-lg border border-neutral-800/60 flex flex-col gap-1.5 font-mono text-xs">
-                {lines.map((line, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-neutral-300">
-                    <span className="text-blue-400/80 mt-0.5 select-none text-[10px]">▪</span>
-                    <span className="leading-snug break-words flex-1 text-[11px] sm:text-xs">
-                      {line}
-                    </span>
-                  </div>
-                ))}
+            <div className="mt-2 pt-2 border-t border-neutral-800/70">
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-medium">
+                  Trade Notes (Buys &amp; Sells)
+                </span>
+                {!isClosedCard && (bankedInfo.hasBankedProfit || bankedInfo.hasLossCut) && (
+                  <span className={`text-[10px] font-medium font-mono px-1.5 py-0.2 rounded ${
+                    bankedInfo.hasBankedProfit 
+                      ? 'bg-blue-950/30 text-blue-300/90 border border-blue-500/20' 
+                      : 'bg-neutral-800/80 text-slate-300 border border-neutral-700/60'
+                  }`}>
+                    {bankedInfo.hasBankedProfit 
+                      ? `Banked: ${formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)}` 
+                      : `Loss Cut: ${formatBankedProfitDisplay(trade, bankedInfo, viewMode, effectivePortfolio)}`}
+                  </span>
+                )}
+              </div>
+              <div className="bg-neutral-950/50 px-2.5 py-1.5 rounded-lg border border-neutral-800/50 flex flex-col gap-1 font-mono text-[11px]">
+                {items.map((item, idx) => {
+                  const isBuy = item.type === 'BUY_FILL';
+                  const isProfit = item.type === 'PROFIT_BANKED';
+                  const isLoss = item.type === 'LOSS_CUT';
+                  return (
+                    <div 
+                      key={idx} 
+                      className="flex items-center justify-between gap-2 py-0.5 text-neutral-400"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        {isBuy ? (
+                          <span className="text-[9px] uppercase font-semibold px-1 py-0.2 rounded bg-emerald-950/40 text-emerald-400/90 border border-emerald-800/40 shrink-0">
+                            Buy
+                          </span>
+                        ) : (isProfit || isLoss) ? (
+                          <span className={`text-[9px] uppercase font-semibold px-1 py-0.2 rounded shrink-0 ${
+                            isProfit
+                              ? 'bg-sky-950/40 text-sky-400/90 border border-sky-800/40'
+                              : 'bg-neutral-800/80 text-slate-400 border border-neutral-700/60'
+                          }`}>
+                            Sell
+                          </span>
+                        ) : (
+                          <span className="text-neutral-500 text-[10px] shrink-0 select-none">▪</span>
+                        )}
+                        <span className={`leading-tight break-words text-[11px] ${
+                          isProfit || isLoss ? 'text-neutral-300' : 'text-neutral-400'
+                        }`}>
+                          {formatNoteLineForView(item, viewMode, trade)}
+                        </span>
+                      </div>
+                      {isProfit && item.profitUsd !== undefined && (
+                        <span className="text-[10px] font-medium text-sky-400/90 shrink-0">
+                          {formatExitPnlDisplay(item, viewMode, trade.entryPrice)}
+                        </span>
+                      )}
+                      {isLoss && item.profitUsd !== undefined && (
+                        <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                          {formatExitPnlDisplay(item, viewMode, trade.entryPrice)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -1848,6 +2352,19 @@ export function History() {
                     BE 🛡️
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setScaleOutTrade(trade);
+                  }}
+                  className="h-7 px-2.5 text-[11px] font-semibold text-cyan-400 border-cyan-800/60 bg-cyan-950/30 hover:bg-cyan-900/50"
+                  title="Scale out position / take profit or cut loss along the way"
+                >
+                  <Target className="w-3 h-3 mr-1 text-cyan-400" />
+                  Scale Out
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1905,10 +2422,10 @@ export function History() {
               setInspectingTrade(trade);
             }}
             className="h-7 px-2 text-[11px] text-neutral-400 hover:text-blue-400"
-            title="Open detailed trade audit drawer"
+            title="View trade details"
           >
             <Info className="w-3 h-3 mr-1" />
-            Audit
+            Details
           </Button>
         </div>
           </>
@@ -1936,6 +2453,8 @@ export function History() {
         onSyncBinance={syncBinance}
         isSyncing={isSyncing}
         unprotectedTradesCount={unprotectedTradesCount}
+        historyTimeHorizon={historyTimeHorizon}
+        onHistoryTimeHorizonChange={setHistoryTimeHorizon}
       />
 
       {/* Active Trades Header & Controls */}
@@ -1946,7 +2465,7 @@ export function History() {
             <span className="inline-block w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
           )}
         </div>
-        <div className="flex gap-1 items-center">
+        <div className="flex gap-1.5 items-center">
           {/* Sort Selector Button & Dropdown */}
           <div className="relative inline-block">
             <button
@@ -2017,13 +2536,24 @@ export function History() {
                   </div>
                   {sortBy === 'PNL' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSort('RISK')}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
+                    sortBy === 'RISK' ? 'text-amber-400 font-bold bg-amber-500/10' : 'text-neutral-300'
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-neutral-200">🔥 Risked %</span>
+                    <span className="text-[10px] text-neutral-400">Highest risk % on top</span>
+                  </div>
+                  {sortBy === 'RISK' && <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                </button>
               </div>
             )}
           </div>
 
-          <Button variant="ghost" size="icon" onClick={fixDuplicates} className="text-neutral-500 hover:text-slate-300 h-8 w-8" title="Fix Duplicates">
-            <Trash2 className="w-4 h-4" />
-          </Button>
           <Button variant="ghost" size="icon" onClick={() => setShowImportModal(true)} className="text-neutral-500 hover:text-blue-400 h-8 w-8" title="Sync Live Position">
             <CloudDownload className="w-4 h-4" />
           </Button>
@@ -2106,6 +2636,7 @@ export function History() {
                         privacyMode={privacyMode}
                         viewMode={viewMode}
                         renderChildTradeCard={(t) => renderTradeCard(t, 'ACTIVE')}
+                        onMergeAll={handleMergeAllInGroup}
                       />
                     );
                   }
@@ -2228,236 +2759,401 @@ export function History() {
                     No limit orders • Drop trades here
                   </div>
                 )}
-                {pendingTrades.map(t => renderTradeCard(t, 'PENDING'))}
+                {pendingTradeGroups.map(group => (
+                  <PendingTradeGroupCard
+                    key={`pending-group-${group.symbol}`}
+                    group={group}
+                    livePrice={getLivePriceForSymbol(group.symbol, livePrices)}
+                    privacyMode={privacyMode}
+                    viewMode={viewMode}
+                    renderChildTradeCard={(trade) => renderTradeCard(trade, 'PENDING')}
+                  />
+                ))}
               </>
             )}
           </div>
 
-          {/* Separator Line & Closed Trades Section */}
-          {(closedTrades.length > 0 || (draggedTrade && !isTradeClosed(draggedTrade))) && (
-            <div 
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                if (activeDropTarget !== 'CLOSED') setActiveDropTarget('CLOSED');
-              }}
-              onDragEnter={(e) => {
-                e.preventDefault();
-                if (activeDropTarget !== 'CLOSED') setActiveDropTarget('CLOSED');
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const id = e.dataTransfer.getData('text/plain') || draggedTradeIdRef.current || draggedTradeId;
-                if (id) handleDropToSection(id, 'CLOSED');
-                isDraggingRef.current = false;
-                draggedTradeIdRef.current = null;
-                setDraggedTradeId(null);
-                setActiveDropTarget(null);
-              }}
-              className={`flex flex-col gap-3 pt-2 transition-all rounded-xl px-0.5 py-1.5 sm:px-1.5 ${
-                activeDropTarget === 'CLOSED' 
-                  ? 'ring-1 ring-neutral-400/60 bg-neutral-800/40 border border-dashed border-neutral-400/80' 
-                  : ''
-              }`}
-            >
+          {/* Closed Trades Section */}
+          <div 
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (activeDropTarget !== 'CLOSED') setActiveDropTarget('CLOSED');
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              if (activeDropTarget !== 'CLOSED') setActiveDropTarget('CLOSED');
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const id = e.dataTransfer.getData('text/plain') || draggedTradeIdRef.current || draggedTradeId;
+              if (id) handleDropToSection(id, 'CLOSED');
+              isDraggingRef.current = false;
+              draggedTradeIdRef.current = null;
+              setDraggedTradeId(null);
+              setActiveDropTarget(null);
+            }}
+            className={`flex flex-col gap-3 pt-3 transition-all rounded-xl px-0.5 py-1.5 sm:px-1.5 ${
+              activeDropTarget === 'CLOSED' 
+                ? 'ring-1 ring-blue-500/60 bg-blue-500/10 border border-dashed border-blue-500/80' 
+                : ''
+            }`}
+          >
+            <div className="flex items-center justify-between px-1 mt-2">
               <div 
                 onClick={() => toggleSectionCollapse('CLOSED')}
-                className="relative my-2 flex items-center justify-center cursor-pointer select-none group py-1"
+                className="relative cursor-pointer select-none group py-1 flex items-center gap-2"
                 title={isSectionCollapsed('CLOSED') ? "Click to expand Closed Trades" : "Click to collapse Closed Trades"}
               >
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-neutral-800 group-hover:border-neutral-700 transition-colors" />
+                <div className="bg-black px-3 text-[11px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5 group-hover:text-blue-300 transition-colors rounded-full py-0.5 border border-transparent group-hover:border-blue-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50 group-hover:bg-blue-400" />
+                  <span>Closed Trades ({filteredClosedTrades.length})</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-blue-400 transition-transform duration-200 ${isSectionCollapsed('CLOSED') ? '-rotate-90' : 'rotate-0'}`} />
                 </div>
-                <div className="relative bg-black px-3 text-[11px] font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5 group-hover:text-neutral-300 transition-colors rounded-full py-0.5 border border-transparent group-hover:border-neutral-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-500 group-hover:bg-neutral-400" />
-                  <span>Closed Trades ({closedTrades.length})</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${isSectionCollapsed('CLOSED') ? '-rotate-90' : 'rotate-0'}`} />
-                </div>
+                {filteredClosedTrades.length > 0 && (
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
+                    closedStats.totalRealized >= 0 ? 'text-blue-400 bg-blue-950/40 border border-blue-800/60' : 'text-slate-300 bg-neutral-900 border border-neutral-800'
+                  }`}>
+                    {closedStats.totalRealized >= 0 ? '+' : ''}{fmtCurrency(closedStats.totalRealized)} ({closedStats.winRate}% win)
+                  </span>
+                )}
               </div>
 
-              {isSectionCollapsed('CLOSED') ? null : (
-                <>
-                  {/* Trading Psychology & Discipline Scorecard */}
-                  {closedTrades.length > 0 && (
-                    <div className="mb-1">
-                      <DisciplineScorecard 
-                        stats={disciplineStats}
-                        viewMode={viewMode}
-                        privacyMode={privacyMode}
-                      />
+              {/* Closed Sort Menu */}
+              <div className="relative inline-block">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setClosedSortMenuOpen(!closedSortMenuOpen);
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-neutral-200 h-8 select-none"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                  <span>Sort</span>
+                  <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${closedSortMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {closedSortMenuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 mt-1.5 w-52 bg-neutral-900/95 border border-neutral-700/80 rounded-lg shadow-2xl backdrop-blur-md z-50 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-100"
+                  >
+                    <div className="px-3 py-1 text-[10px] text-neutral-400 font-semibold uppercase tracking-wider border-b border-neutral-800">
+                      Sort Closed Trades
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('DATE_DESC')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'DATE_DESC' ? 'text-blue-400 font-bold bg-blue-500/15' : 'text-neutral-300'}`}
+                    >
+                      <span>Newest Closed First</span>
+                      {closedSortBy === 'DATE_DESC' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('PNL_DESC')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'PNL_DESC' ? 'text-blue-400 font-bold bg-blue-500/15' : 'text-neutral-300'}`}
+                    >
+                      <span>Highest Profit First</span>
+                      {closedSortBy === 'PNL_DESC' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('PNL_ASC')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'PNL_ASC' ? 'text-slate-300 font-bold bg-neutral-800' : 'text-neutral-300'}`}
+                    >
+                      <span>Biggest Loss First</span>
+                      {closedSortBy === 'PNL_ASC' && <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('RETURN_PCT_DESC')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'RETURN_PCT_DESC' ? 'text-sky-400 font-bold bg-sky-500/15' : 'text-neutral-300'}`}
+                    >
+                      <span>🚀 Highest Return % First</span>
+                      {closedSortBy === 'RETURN_PCT_DESC' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />}
+                    </button>
+                    {/* Discipline sorting options removed from dropdown as requested (kept as filter buttons) */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('RISK_DESC')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'RISK_DESC' ? 'text-blue-400 font-bold bg-blue-500/15' : 'text-neutral-300'}`}
+                    >
+                      <span>⚠️ Risked % (Highest risk)</span>
+                      {closedSortBy === 'RISK_DESC' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('SIZE')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'SIZE' ? 'text-neutral-200 font-bold bg-neutral-800' : 'text-neutral-300'}`}
+                    >
+                      <span>Position Size (Largest)</span>
+                      {closedSortBy === 'SIZE' && <CheckCircle2 className="w-3.5 h-3.5 text-neutral-200" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectClosedSort('FEES')}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-800 transition-colors ${closedSortBy === 'FEES' ? 'text-neutral-200 font-bold bg-neutral-800' : 'text-neutral-300'}`}
+                    >
+                      <span>Fees Paid (Highest)</span>
+                      {closedSortBy === 'FEES' && <CheckCircle2 className="w-3.5 h-3.5 text-neutral-200" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Interactive Closed Trades Day Analytics & Date Range Filter */}
+            {!isSectionCollapsed('CLOSED') && (
+              <ClosedTradesDayAnalytics
+                days={closedDayGroups}
+                summary={closedPeriodSummary}
+                datePreset={closedDatePreset}
+                onSelectDatePreset={(preset) => {
+                  setClosedDatePreset(preset);
+                  setClosedSelectedDay(null);
+                  try {
+                    localStorage.setItem('history_closed_date_preset', preset);
+                  } catch {}
+                }}
+                startDate={closedStartDate}
+                onStartDateChange={(d) => {
+                  setClosedStartDate(d);
+                  setClosedSelectedDay(null);
+                }}
+                endDate={closedEndDate}
+                onEndDateChange={(d) => {
+                  setClosedEndDate(d);
+                  setClosedSelectedDay(null);
+                }}
+                selectedDay={closedSelectedDay}
+                onSelectDay={setClosedSelectedDay}
+                viewGrouping={closedViewGrouping}
+                onViewGroupingChange={(mode) => {
+                  setClosedViewGrouping(mode);
+                  try {
+                    localStorage.setItem('history_closed_grouping', mode);
+                  } catch {}
+                }}
+                viewMode={viewMode}
+                pkrRate={pkrRate}
+                totalClosedCount={closedTrades.length}
+              />
+            )}
+
+            {/* Interactive Closed Trades Filter Chips & Search Bar */}
+            {!isSectionCollapsed('CLOSED') && (
+              <div className="flex flex-col gap-2 px-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClosedFilterTab('ALL');
+                      localStorage.setItem('history_closed_filter_tab', 'ALL');
+                    }}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                      closedFilterTab === 'ALL'
+                        ? 'bg-blue-600/20 text-white border-blue-500/50 shadow-sm'
+                        : 'bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800'
+                    }`}
+                  >
+                    All ({closedTrades.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClosedFilterTab('WINS');
+                      localStorage.setItem('history_closed_filter_tab', 'WINS');
+                    }}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                      closedFilterTab === 'WINS'
+                        ? 'bg-blue-600/25 text-blue-300 border-blue-500/60 shadow-sm'
+                        : 'bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800'
+                    }`}
+                  >
+                    Wins
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClosedFilterTab('LOSSES');
+                      localStorage.setItem('history_closed_filter_tab', 'LOSSES');
+                    }}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                      closedFilterTab === 'LOSSES'
+                        ? 'bg-slate-800 text-slate-200 border-slate-700 shadow-sm'
+                        : 'bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800'
+                    }`}
+                  >
+                    Losses
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClosedFilterTab('SIGNIFICANT');
+                      localStorage.setItem('history_closed_filter_tab', 'SIGNIFICANT');
+                    }}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                      closedFilterTab === 'SIGNIFICANT'
+                        ? 'bg-amber-400/20 text-amber-200 border-amber-400/60 shadow-sm'
+                        : 'bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800'
+                    }`}
+                    title="Significant Trades only (excludes minor profits & losses < $2)"
+                  >
+                    ⭐ Significant Trades
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClosedFilterTab('PLAN_FOLLOWED');
+                      localStorage.setItem('history_closed_filter_tab', 'PLAN_FOLLOWED');
+                    }}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                      closedFilterTab === 'PLAN_FOLLOWED'
+                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-sm'
+                        : 'bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800'
+                    }`}
+                  >
+                    🎯 Per Plan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClosedFilterTab('DEVIATED');
+                      localStorage.setItem('history_closed_filter_tab', 'DEVIATED');
+                    }}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                      closedFilterTab === 'DEVIATED'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
+                        : 'bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800'
+                    }`}
+                  >
+                    ⚡ Deviated
+                  </button>
+                </div>
+                {/* Search / Filter input */}
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={closedSearchQuery}
+                    onChange={(e) => setClosedSearchQuery(e.target.value)}
+                    placeholder="Search closed trades by symbol, notes, or discipline tag..."
+                    className="h-8 text-xs bg-neutral-950/80 border-neutral-800 pl-3 pr-8"
+                  />
+                  {closedSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setClosedSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-neutral-400 hover:text-white text-xs font-bold"
+                      title="Clear search"
+                    >
+                      ×
+                    </button>
                   )}
+                </div>
+              </div>
+            )}
 
-                  {closedTrades.length > 0 && (
-                    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-neutral-900/40 border border-neutral-800/60 text-[11px] select-none gap-2 flex-wrap">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-neutral-500 font-medium">Realized PnL:</span>
-                          <span className={`font-bold font-mono ${closedStats.totalRealized >= 0 ? 'text-sky-400' : 'text-slate-400'}`}>
-                            {viewMode === 'ZEN' || privacyMode ? (
-                              '••••••'
-                            ) : viewMode === 'PERCENT' ? (
-                              `${closedStats.totalRealized >= 0 ? '+' : ''}${stats.totalEquity > 0 ? ((closedStats.totalRealized / stats.totalEquity) * 100).toFixed(2) : '0.00'}%`
-                            ) : viewMode === 'R_MULTIPLE' ? (
-                              `${portfolioRStats.totalRealizedR >= 0 ? '+' : ''}${portfolioRStats.totalRealizedR}R (${closedStats.totalRealized >= 0 ? '+' : ''}${fmtCurrency(closedStats.totalRealized)})`
-                            ) : (
-                              `${closedStats.totalRealized >= 0 ? '+' : ''}${fmtCurrency(closedStats.totalRealized)}`
-                            )}
-                          </span>
-                        </div>
-                        <div className="h-3 w-px bg-neutral-800" />
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-neutral-500 font-medium">Win Rate:</span>
-                          <span className="font-semibold text-neutral-200 font-mono">
-                            {closedStats.winRate}%
-                          </span>
-                          <span className="text-neutral-500 text-[10px]">
-                            ({closedStats.wins}W / {closedStats.losses}L)
-                          </span>
-                        </div>
-                        <div className="h-3 w-px bg-neutral-800 hidden md:block" />
-                        <div className="hidden md:flex items-center gap-1.5">
-                          <span className="text-neutral-500 font-medium">Closed:</span>
-                          <span className="font-semibold text-neutral-300 font-mono">{closedStats.count}</span>
-                        </div>
-                      </div>
+            {draggedTradeId && activeDropTarget === 'CLOSED' && (
+              <div className="border border-dashed border-blue-500/70 bg-blue-500/10 text-blue-300 rounded-lg py-2 text-center text-xs font-medium">
+                Move {draggedTrade?.symbol} to Closed Trades
+              </div>
+            )}
 
-                      {/* Closed Trades Sort Option */}
-                      <div className="relative inline-block ml-auto">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setClosedSortMenuOpen(!closedSortMenuOpen);
-                          }}
-                          className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-all select-none bg-neutral-950 text-neutral-300 border-neutral-800 hover:border-neutral-700 hover:text-white"
-                          title="Sort Closed Trades"
-                        >
-                          <ArrowUpDown className="w-3 h-3 text-sky-400" />
-                          <span>
-                            {closedSortBy === 'DATE_DESC' ? 'Newest' :
-                             closedSortBy === 'DATE_ASC' ? 'Oldest' :
-                             closedSortBy === 'PNL_DESC' ? 'Highest Profit' :
-                             closedSortBy === 'PNL_ASC' ? 'Biggest Loss' :
-                             closedSortBy === 'SIZE' ? 'Position Size' : 'Fees Paid'}
-                          </span>
-                          <ChevronDown className={`w-2.5 h-2.5 opacity-60 transition-transform ${closedSortMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        {closedSortMenuOpen && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute right-0 mt-1.5 w-52 bg-neutral-900/95 border border-neutral-700/80 rounded-lg shadow-2xl backdrop-blur-md z-50 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-100"
-                          >
-                            <div className="px-3 py-1 text-[10px] text-neutral-400 font-semibold uppercase tracking-wider border-b border-neutral-800">
-                              Sort Closed Trades
+            {isSectionCollapsed('CLOSED') ? null : (
+              <>
+                {filteredClosedTrades.length === 0 ? (
+                  <div className="border border-dashed border-neutral-800/80 rounded-xl p-4 text-center text-xs text-neutral-400 bg-neutral-950/30 flex flex-col items-center gap-2">
+                    <span>No closed trades found matching this filter or date range.</span>
+                    {(closedDatePreset !== 'ALL' || closedStartDate || closedEndDate || closedSelectedDay || closedFilterTab !== 'ALL' || closedSearchQuery) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClosedDatePreset('ALL');
+                          setClosedStartDate('');
+                          setClosedEndDate('');
+                          setClosedSelectedDay(null);
+                          setClosedFilterTab('ALL');
+                          setClosedSearchQuery('');
+                        }}
+                        className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline"
+                      >
+                        Reset Date Range & Filters
+                      </button>
+                    )}
+                  </div>
+                ) : closedViewGrouping === 'BY_DAY' ? (
+                  <div className="flex flex-col gap-4">
+                    {groupedDisplayDays.map(day => {
+                      const isSelected = closedSelectedDay === day.dateKey;
+                      return (
+                        <div key={day.dateKey} className="flex flex-col gap-2">
+                          {/* Day Group Sleek Divider Header */}
+                          <div className={`flex items-center justify-between px-1.5 py-1.5 border-b transition-colors ${
+                            isSelected
+                              ? 'border-blue-500/50 bg-neutral-900/60 rounded-lg'
+                              : 'border-neutral-800/80'
+                          }`}>
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <span className="font-semibold text-xs text-neutral-200 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                                {day.subtitle || day.title}
+                              </span>
+                              {day.relative && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 font-medium">
+                                  {day.relative}
+                                </span>
+                              )}
+                              {day.symbols.length > 0 && (
+                                <div className="hidden sm:flex items-center gap-1">
+                                  {day.symbols.slice(0, 3).map(sym => (
+                                    <span key={sym} className="text-[9px] font-mono px-1 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">
+                                      {sym}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClosedSort('DATE_DESC')}
-                              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
-                                closedSortBy === 'DATE_DESC' ? 'text-sky-400 font-bold bg-blue-500/10' : 'text-neutral-300'
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-200">🕒 Newest Closed First</span>
-                                <span className="text-[10px] text-neutral-400">Most recent exits on top</span>
-                              </div>
-                              {closedSortBy === 'DATE_DESC' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClosedSort('DATE_ASC')}
-                              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
-                                closedSortBy === 'DATE_ASC' ? 'text-sky-400 font-bold bg-blue-500/10' : 'text-neutral-300'
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-200">⏳ Oldest Closed First</span>
-                                <span className="text-[10px] text-neutral-400">Earliest exits on top</span>
-                              </div>
-                              {closedSortBy === 'DATE_ASC' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClosedSort('PNL_DESC')}
-                              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
-                                closedSortBy === 'PNL_DESC' ? 'text-sky-400 font-bold bg-blue-500/10' : 'text-neutral-300'
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-200">📈 Highest Profit</span>
-                                <span className="text-[10px] text-neutral-400">Best winning trades first</span>
-                              </div>
-                              {closedSortBy === 'PNL_DESC' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClosedSort('PNL_ASC')}
-                              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
-                                closedSortBy === 'PNL_ASC' ? 'text-slate-300 font-bold bg-neutral-800' : 'text-neutral-300'
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-200">📉 Biggest Loss</span>
-                                <span className="text-[10px] text-neutral-400">Review stop-outs and drawdowns</span>
-                              </div>
-                              {closedSortBy === 'PNL_ASC' && <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClosedSort('SIZE')}
-                              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
-                                closedSortBy === 'SIZE' ? 'text-blue-400 font-bold bg-blue-500/10' : 'text-neutral-300'
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-200">💰 Position Size</span>
-                                <span className="text-[10px] text-neutral-400">Largest capital deployed</span>
-                              </div>
-                              {closedSortBy === 'SIZE' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectClosedSort('FEES')}
-                              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors ${
-                                closedSortBy === 'FEES' ? 'text-amber-400 font-bold bg-amber-500/10' : 'text-neutral-300'
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-200">🏷️ Fees Paid</span>
-                                <span className="text-[10px] text-neutral-400">Highest Binance fees first</span>
-                              </div>
-                              {closedSortBy === 'FEES' && <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-xs font-bold font-mono ${day.netPnL >= 0 ? 'text-blue-400' : 'text-slate-400'}`}>
+                                {day.netPnL >= 0 ? '+' : ''}{fmtCurrency(day.netPnL)}
+                              </span>
+                              <span className="text-[10px] text-neutral-500 font-mono">
+                                ({day.totalTrades} {day.totalTrades === 1 ? 'trade' : 'trades'} · {day.winRate}%)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setClosedSelectedDay(isSelected ? null : day.dateKey)}
+                                className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                                  isSelected
+                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                                }`}
+                                title="Filter only this day"
+                              >
+                                {isSelected ? 'Filtered' : 'Filter'}
+                              </button>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
-                  {draggedTradeId && activeDropTarget === 'CLOSED' && (
-                    <div className="border border-dashed border-neutral-400/70 bg-neutral-800/60 text-neutral-300 rounded-lg py-2 text-center text-xs font-medium">
-                      Close and archive {draggedTrade?.symbol}
-                    </div>
-                  )}
-
-                  {closedTrades.length === 0 && (
-                    <div className="border border-dashed border-neutral-800 rounded-xl p-4 text-center text-xs text-neutral-500 bg-neutral-950/40">
-                      Drop trades here to close
-                    </div>
-                  )}
-                  {closedTrades.map(t => renderTradeCard(t, 'CLOSED'))}
-                </>
-              )}
-            </div>
-          )}
+                          {/* Day Trades List */}
+                          <div className="flex flex-col gap-2">
+                            {day.trades.map(t => renderTradeCard(t, 'CLOSED'))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {filteredClosedTrades.map(t => renderTradeCard(t, 'CLOSED'))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -2490,25 +3186,195 @@ export function History() {
               }
             }}
             onToggleTradeType={handleToggleTradeType}
-            onSelect={async (sym, importedEntry, size, feeUsd, isPending, tradeType = 'TRADE', market = 'SPOT', binanceOrderId) => {
+            onSelect={async (sym, importedEntry, size, feeUsd, isPending, tradeType = 'TRADE', market = 'SPOT', binanceOrderId, forceNewTrade = false) => {
               try {
                 if (!auth.currentUser) {
                   toast.error("Not logged in");
                   return;
                 }
                 const isAlpha = market === 'ALPHA' || isAlphaTradeOrSymbol(sym);
+                const cleanSym = getCleanSymbol(sym) || sym;
+
+                if (binanceOrderId) {
+                  const existingByOrderId = trades.find(t => t.binanceOrderId && String(t.binanceOrderId) === String(binanceOrderId));
+                  if (existingByOrderId) {
+                    setShowImportModal(false);
+                    toast(`Order #${binanceOrderId} is already tracked in app.`);
+                    return;
+                  }
+                }
+
+                if (isPending) {
+                  const existingPending = trades.find(t => 
+                    t.status === 'PENDING' && 
+                    isSameSymbol(t.symbol, cleanSym) && 
+                    (
+                      (t.binanceOrderId && binanceOrderId && String(t.binanceOrderId) === String(binanceOrderId)) ||
+                      Math.abs((t.entryPrice || 0) - importedEntry) <= (importedEntry * 0.002 || 0.01)
+                    )
+                  );
+                  if (existingPending) {
+                    setShowImportModal(false);
+                    toast(`Limit order for ${sym} is already tracked.`);
+                    return;
+                  }
+                }
+
+                // Check if active trades or holdings exist for this symbol (e.g. user already has an active trade or holding)
+                const matchingActivePositions = !isPending ? trades.filter(t => 
+                  t.id && 
+                  !isTradeClosed(t) && 
+                  t.status !== 'PENDING' && 
+                  isSameSymbol(t.symbol, cleanSym) &&
+                  !isAlphaTradeOrSymbol(t)
+                ) : [];
+
+                // Dedicated handling for HOLDING: If an active holding already exists, update it to the authoritative wallet values!
+                if (tradeType === 'HOLDING' && !isPending) {
+                  const existingHolding = matchingActivePositions.find(t => t.type === 'HOLDING');
+                  if (existingHolding && existingHolding.id) {
+                    const totalCoins = Math.abs(size);
+                    const newEntry = importedEntry > 0 ? importedEntry : (existingHolding.entryPrice || 0);
+                    const newCost = totalCoins * newEntry;
+                    await updateDoc(doc(db, 'trades', existingHolding.id), {
+                      positionSizeCoins: totalCoins,
+                      entryPrice: newEntry,
+                      totalBuyUsd: newCost,
+                      positionSize: newCost,
+                      feeUsd: feeUsd !== undefined ? feeUsd : (existingHolding.feeUsd || 0),
+                      status: 'ACTIVE',
+                      type: 'HOLDING',
+                      stopLoss: 0,
+                      takeProfit1: 0,
+                      riskAmount: 0,
+                      riskPercent: 0,
+                      notes: `Imported from Binance as HOLDING (${totalCoins.toLocaleString()} coins @ $${formatPrice(newEntry)})`,
+                      updatedAt: Date.now()
+                    });
+                    setShowImportModal(false);
+                    toast.success(`Updated ${cleanSym} in Investments (Holdings)!`, { icon: '💎' });
+                    await refreshTrades();
+                    return;
+                  }
+                }
+
+                if (!forceNewTrade && matchingActivePositions.length > 0) {
+                  // User requirement: Whenever opening/importing a trade of a coin with an active trade or holding,
+                  // confirm with the user first whether to make it a new trade or merge into existing trade/holding!
+                  setShowImportModal(false);
+                  const pendingNewTrade: Partial<Trade> = {
+                    symbol: cleanSym,
+                    entryPrice: importedEntry,
+                    positionSizeCoins: size,
+                    totalBuyUsd: size * importedEntry,
+                    feeUsd: feeUsd || 0,
+                    status: 'ACTIVE',
+                    market: market as any,
+                    type: tradeType as any,
+                    binanceOrderId: binanceOrderId || undefined,
+                    createdAt: Date.now()
+                  };
+
+                  setActivePositionConfirmState({
+                    isOpen: true,
+                    symbol: cleanSym,
+                    newTrade: pendingNewTrade,
+                    existingPositions: matchingActivePositions,
+                    onConfirmNew: async () => {
+                      if (!auth.currentUser) return;
+                      const isHolding = tradeType === 'HOLDING';
+                      const plan = !isHolding ? generateSolidSellPlan(importedEntry, size, cleanSym) : null;
+                      const newDoc: any = {
+                        userId: auth.currentUser.uid,
+                        symbol: cleanSym,
+                        portfolioSize: baseCapital || 10000,
+                        riskPercent: isHolding ? 0 : 1,
+                        entryPrice: importedEntry,
+                        takeProfit1: plan ? plan.takeProfit1 : 0,
+                        tp1Percent: plan ? plan.tp1Percent : 0,
+                        takeProfit2: plan ? plan.takeProfit2 : undefined,
+                        tp2Percent: plan ? plan.tp2Percent : undefined,
+                        takeProfit3: plan ? plan.takeProfit3 : undefined,
+                        tp3Percent: plan ? plan.tp3Percent : undefined,
+                        stopLoss: plan ? plan.stopLoss : 0,
+                        riskAmount: plan ? plan.riskAmount : 0,
+                        positionSizeCoins: size,
+                        totalBuyUsd: size * importedEntry,
+                        positionSize: size * importedEntry,
+                        feeUsd: feeUsd || 0,
+                        status: 'ACTIVE',
+                        market: market,
+                        type: tradeType,
+                        createdAt: Date.now(),
+                        filledAt: Date.now(),
+                        notes: `Imported from Binance as new standalone ${tradeType}`,
+                        binanceOrderId: binanceOrderId || undefined
+                      };
+                      await addDoc(collection(db, 'trades'), newDoc);
+                      toast.success(`Imported ${cleanSym} as a new standalone ${tradeType === 'HOLDING' ? 'investment' : 'trade'}!`);
+                      setActivePositionConfirmState(null);
+                      await refreshTrades();
+                    },
+                    onConfirmMerge: async (targetTradeId: string, mergedData: any) => {
+                      const targetTrade = matchingActivePositions.find(t => t.id === targetTradeId) || matchingActivePositions[0];
+                      if (!targetTrade || !targetTrade.id) return;
+                      const addedCoins = size;
+                      let planUpdates = {};
+                      if (targetTrade.type !== 'HOLDING' && (!targetTrade.takeProfit1 || !targetTrade.stopLoss || targetTrade.stopLoss === 0)) {
+                        const plan = generateSolidSellPlan(mergedData.newEntryPrice, mergedData.newPositionSizeCoins, cleanSym);
+                        planUpdates = {
+                          takeProfit1: plan.takeProfit1,
+                          tp1Percent: plan.tp1Percent,
+                          takeProfit2: plan.takeProfit2,
+                          tp2Percent: plan.tp2Percent,
+                          takeProfit3: plan.takeProfit3,
+                          tp3Percent: plan.tp3Percent,
+                          stopLoss: plan.stopLoss,
+                          riskAmount: plan.riskAmount
+                        };
+                      } else if (targetTrade.type !== 'HOLDING') {
+                        const riskAmount = Math.max(0, parseFloat(((mergedData.newEntryPrice - targetTrade.stopLoss) * mergedData.newPositionSizeCoins).toFixed(2)));
+                        planUpdates = { riskAmount };
+                      }
+
+                      await updateDoc(doc(db, 'trades', targetTrade.id), {
+                        positionSizeCoins: mergedData.newPositionSizeCoins,
+                        entryPrice: mergedData.newEntryPrice,
+                        totalBuyUsd: mergedData.newTotalBuyUsd,
+                        positionSize: mergedData.newTotalBuyUsd,
+                        feeUsd: mergedData.newFeeUsd,
+                        notes: `${targetTrade.notes || ''}\nAdded buy on Binance (+${addedCoins.toLocaleString()} coins). New Avg Entry: $${formatPrice(mergedData.newEntryPrice)}`.trim(),
+                        updatedAt: Date.now(),
+                        ...planUpdates
+                      });
+                      toast.success(`Merged added buy of ${addedCoins.toLocaleString()} ${cleanSym} into existing ${targetTrade.type === 'HOLDING' ? 'investment' : 'trade'}!`);
+                      setActivePositionConfirmState(null);
+                      await refreshTrades();
+                    }
+                  });
+                  return;
+                }
+
+                // New trade: generate and attach solid sell plan immediately (only for active trades, never for holdings)
+                const isHolding = tradeType === 'HOLDING';
+                const plan = (!isPending && !isHolding) ? generateSolidSellPlan(importedEntry, size, cleanSym) : null;
                 const newTrade: any = {
                   userId: auth.currentUser.uid,
                   symbol: sym,
                   portfolioSize: stats.totalEquity || baseCapital,
-                  riskPercent: 1,
+                  riskPercent: isHolding ? 0 : 1,
                   entryPrice: importedEntry,
-                  stopLoss: 0,
-                  takeProfit1: 0,
-                  tp1Percent: 100,
-                  riskAmount: 0,
+                  stopLoss: plan ? plan.stopLoss : 0,
+                  takeProfit1: plan ? plan.takeProfit1 : 0,
+                  tp1Percent: plan ? plan.tp1Percent : 0,
+                  takeProfit2: plan ? plan.takeProfit2 : undefined,
+                  tp2Percent: plan ? plan.tp2Percent : undefined,
+                  takeProfit3: plan ? plan.takeProfit3 : undefined,
+                  tp3Percent: plan ? plan.tp3Percent : undefined,
+                  riskAmount: plan ? plan.riskAmount : 0,
                   positionSizeCoins: size,
                   totalBuyUsd: size * importedEntry,
+                  positionSize: size * importedEntry,
                   buyFeeUsd: feeUsd || 0,
                   feeUsd: feeUsd || 0,
                   totalFeesUsd: feeUsd || 0,
@@ -2518,14 +3384,21 @@ export function History() {
                   status: isPending ? 'PENDING' : 'ACTIVE',
                   notes: isPending ? 'Imported Limit Order from Binance' : `Imported from Binance as ${tradeType}`,
                   createdAt: Date.now(),
-                  pkrRate: pkrRateFromContext || 283.89
+                  pkrRate: pkrRate
                 };
                 if (binanceOrderId) {
                   newTrade.binanceOrderId = String(binanceOrderId);
                 }
                 await saveTradeOptimistic(newTrade);
                 setShowImportModal(false);
-                toast.success(isPending ? `Imported ${sym} as Limit Order` : `Imported ${sym} as ${tradeType}`);
+                toast.success(
+                  isPending 
+                    ? `Imported ${sym} as Limit Order` 
+                    : isHolding 
+                      ? `Imported ${cleanSym} to Investments (Holdings)!` 
+                      : `Imported ${cleanSym} with Sell Plan`
+                );
+                await refreshTrades();
               } catch (e) {
                 console.error(e);
                 toast.error("Failed to import trade");
@@ -2544,6 +3417,18 @@ export function History() {
             trade={sharingTrade}
             livePrice={livePrices[sharingTrade.symbol]}
             onClose={() => setSharingTrade(null)}
+          />
+        )}
+        {scaleOutTrade && (
+          <ScaleOutModal
+            trade={scaleOutTrade}
+            livePrice={livePrices[scaleOutTrade.symbol]}
+            pkrRate={pkrRateFromContext}
+            onClose={() => setScaleOutTrade(null)}
+            onConfirm={async (id, updates) => {
+              await updateTradeOptimistic(id, updates);
+              await refreshTrades();
+            }}
           />
         )}
         {inspectingTrade && (
@@ -2582,7 +3467,20 @@ export function History() {
             }}
           />
         )}
+        {activePositionConfirmState && activePositionConfirmState.isOpen && (
+          <ActivePositionConfirmModal
+            isOpen={activePositionConfirmState.isOpen}
+            onClose={() => setActivePositionConfirmState(null)}
+            symbol={activePositionConfirmState.symbol}
+            newTrade={activePositionConfirmState.newTrade}
+            existingPositions={activePositionConfirmState.existingPositions}
+            onConfirmNewTrade={activePositionConfirmState.onConfirmNew}
+            onConfirmMerge={activePositionConfirmState.onConfirmMerge}
+          />
+        )}
       </Suspense>
     </div>
   );
 }
+
+export default History;

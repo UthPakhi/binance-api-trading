@@ -9,8 +9,10 @@ import { useBinanceTickers, fetchBinanceSymbols } from '../lib/binance';
 import { useTradeContext } from '../lib/TradeContext';
 import { 
   calculatePortfolioStats, formatPrice, isAlphaTradeOrSymbol, getTradeIsLong,
-  formatCurrency, formatPkr, calculateTargetRR, calculateTargetProfit, calculateTargetSellFee 
+  formatCurrency, formatPkr, calculateTargetRR, calculateTargetProfit, calculateTargetSellFee, getCleanSymbol,
+  isTradeClosed, isSameSymbol
 } from '../lib/tradeUtils';
+import { ActivePositionConfirmModal } from './ActivePositionConfirmModal';
 import toast from 'react-hot-toast';
 
 
@@ -26,13 +28,15 @@ export function Calculator() {
     effectiveFeeRate,
     isDemoMode,
     feeTier,
-    saveTradeOptimistic
+    saveTradeOptimistic,
+    updateTradeOptimistic
   } = useTradeContext();
   const { availableCapital, freeAvailableCash, totalEquity, totalRealizedPnL, totalLiveUnrealizedPnL } = calculatePortfolioStats(trades, baseCapital, contextLivePrices, binanceBalance);
 
-  const [portfolioSize, setPortfolioSize] = useState<string>('');
+  const [portfolioSize, setPortfolioSize] = useState<string>(() => localStorage.getItem('calc_portfolioSize') || '');
   const [riskPercent, setRiskPercent] = useState<string>(() => localStorage.getItem('calc_riskPercent') || '0.5');
   const hasUserEditedEquity = useRef(false);
+  const hasInitializedEquity = useRef(false);
   const [entry, setEntry] = useState<string>(() => localStorage.getItem('calc_entry') || '');
   const [sl, setSl] = useState<string>(() => localStorage.getItem('calc_sl') || '');
   
@@ -64,13 +68,18 @@ export function Calculator() {
   const [symbol, setSymbol] = useState<string>(() => localStorage.getItem('calc_symbol') || '');
   const [notes, setNotes] = useState<string>(() => localStorage.getItem('calc_notes') || '');
   const [isSaving, setIsSaving] = useState(false);
-  const [isExecutingBinance, setIsExecutingBinance] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState<string | null>(null);
 
   const [aiRiskAudit, setAiRiskAudit] = useState<{ status: 'approved' | 'vetoed'; message: string } | null>(null);
 
+  // Active Position Conflict Confirmation State
+  const [pendingTradeForConfirm, setPendingTradeForConfirm] = useState<Trade | null>(null);
+  const [existingPositionsForConfirm, setExistingPositionsForConfirm] = useState<Trade[]>([]);
+  const [showActiveConfirmModal, setShowActiveConfirmModal] = useState<boolean>(false);
+
   // Sync state to local storage to persist across tabs/history
   useEffect(() => {
+    localStorage.setItem('calc_portfolioSize', portfolioSize);
     localStorage.setItem('calc_riskPercent', riskPercent);
     localStorage.setItem('calc_entry', entry);
     localStorage.setItem('calc_sl', sl);
@@ -82,13 +91,19 @@ export function Calculator() {
     localStorage.setItem('calc_tp3Pct', tp3Pct);
     localStorage.setItem('calc_symbol', symbol);
     localStorage.setItem('calc_notes', notes);
-  }, [riskPercent, entry, sl, tp1, tp1Pct, tp2, tp2Pct, tp3, tp3Pct, symbol, notes]);
+  }, [portfolioSize, riskPercent, entry, sl, tp1, tp1Pct, tp2, tp2Pct, tp3, tp3Pct, symbol, notes]);
 
-  // Auto-sync portfolio size with total account equity when available
+  // Initial fill for portfolio size when equity is loaded, without constantly overriding during live price ticks
   useEffect(() => {
     const effectiveEquity = totalEquity > 0 ? totalEquity : (baseCapital > 0 ? baseCapital : 0);
-    if (effectiveEquity > 0 && !hasUserEditedEquity.current) {
-      setPortfolioSize(effectiveEquity.toFixed(2));
+    if (effectiveEquity > 0 && !hasInitializedEquity.current) {
+      hasInitializedEquity.current = true;
+      setPortfolioSize(prev => {
+        if (!prev || prev === '0' || prev === '') {
+          return effectiveEquity.toFixed(2);
+        }
+        return prev;
+      });
     }
   }, [totalEquity, baseCapital]);
 
@@ -188,12 +203,12 @@ export function Calculator() {
     .slice(0, 10);
 
   // Live Price Hook
-  const normalizedSymbol = symbol.trim().toUpperCase();
+  const normalizedSymbol = getCleanSymbol(symbol);
   const lookupSymbols = normalizedSymbol.length > 1
-    ? [normalizedSymbol, normalizedSymbol.endsWith('USDT') ? normalizedSymbol : `${normalizedSymbol}USDT`]
+    ? [normalizedSymbol]
     : [];
   const livePrices = useBinanceTickers(lookupSymbols);
-  const livePrice = livePrices[normalizedSymbol] || livePrices[`${normalizedSymbol}USDT`];
+  const livePrice = livePrices[normalizedSymbol];
 
   const PKR_RATE = pkrRate || 283.89;
 
@@ -217,7 +232,7 @@ export function Calculator() {
 
   const getPctChange = (price: number) => {
     if (ent === 0 || price === 0) return 0;
-    const isLong = ent > stop;
+    const isLong = stop > 0 ? ent >= stop : true;
     const change = ((price - ent) / ent) * 100;
     return isLong ? change : -change;
   };
@@ -393,39 +408,42 @@ export function Calculator() {
     setVisibleTpCount(1);
   };
 
-  const handleExecuteBinance = async (orderType: 'MARKET' | 'LIMIT') => {
-    if (!symbol || !coins || coins <= 0 || !ent) {
-      toast.error("Please enter a valid symbol, entry, and position size.");
-      return;
-    }
+  const handleConfirmNewTrade = async () => {
+    if (!pendingTradeForConfirm) return;
+    setIsSaving(true);
     try {
-      setIsExecutingBinance(true);
-      const isLong = ent >= stop;
-      const side = isLong ? 'BUY' : 'SELL';
-      const cleanSym = symbol.trim().toUpperCase();
-
-      const res = await fetch('/api/exchange/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: cleanSym,
-          side,
-          type: orderType,
-          quantity: coins.toFixed(6),
-          price: orderType === 'LIMIT' ? ent : undefined
-        })
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        toast.success(`🚀 Binance ${orderType} order executed successfully for ${cleanSym}!`, { icon: '🚀' });
-        await handleSave(orderType === 'MARKET' ? 'ACTIVE' : 'PENDING');
-      } else {
-        throw new Error(data.message || 'Binance order execution failed');
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to execute order on Binance');
+      await saveTradeOptimistic(pendingTradeForConfirm);
+      setSymbol('');
+      toast.success(isDemoMode ? `🧪 Paper trade saved as new standalone trade!` : `Saved as new standalone trade!`);
+    } catch (e) {
+      console.error("Error saving trade: ", e);
+      toast.error("Failed to save trade.");
     } finally {
-      setIsExecutingBinance(false);
+      setIsSaving(false);
+      setPendingTradeForConfirm(null);
+    }
+  };
+
+  const handleConfirmMergeTrade = async (targetTradeId: string, mergedData: any) => {
+    setIsSaving(true);
+    try {
+      const existing = trades.find(t => t.id === targetTradeId);
+      await updateTradeOptimistic(targetTradeId, {
+        positionSizeCoins: mergedData.newPositionSizeCoins,
+        entryPrice: mergedData.newEntryPrice,
+        totalBuyUsd: mergedData.newTotalBuyUsd,
+        feeUsd: mergedData.newFeeUsd,
+        notes: `${existing?.notes || ''}\nAdded trade allocation (+${pendingTradeForConfirm?.positionSizeCoins?.toLocaleString() || 0} coins @ $${formatPrice(pendingTradeForConfirm?.entryPrice || 0)}). New Avg Entry: $${formatPrice(mergedData.newEntryPrice)}`.trim(),
+        updatedAt: Date.now()
+      });
+      setSymbol('');
+      toast.success(`Merged into existing ${existing?.type === 'HOLDING' ? 'investment' : 'trade'}! New Avg Entry: $${formatPrice(mergedData.newEntryPrice)}`);
+    } catch (e) {
+      console.error("Error merging trade: ", e);
+      toast.error("Failed to merge trade.");
+    } finally {
+      setIsSaving(false);
+      setPendingTradeForConfirm(null);
     }
   };
 
@@ -433,18 +451,21 @@ export function Calculator() {
     if (!auth.currentUser) return;
     if (coins === 0 || totalBuy === 0) return;
     if (!isPctValid) {
-      alert("Total sell percentage must be exactly 100%. Use Auto-Balance to resolve instantly.");
+      toast.error("Total sell percentage must be exactly 100%. Use Auto-Balance to resolve instantly.");
       return;
     }
     
     if (totalBuy > availableCapital + 0.01) {
-      alert(`Insufficient funds! You only have $${availableCapital.toFixed(2)} available. Required: $${totalBuy.toFixed(2)}`);
+      toast.error(`Insufficient funds! You only have $${availableCapital.toFixed(2)} available. Required: $${totalBuy.toFixed(2)}`);
       return;
     }
 
     setIsSaving(true);
     try {
       const isAlpha = isAlphaTradeOrSymbol(symbol);
+      const isLong = ent >= stop;
+      const liveP = livePrice || 0;
+      const isBreakout = liveP > 0 ? (isLong ? ent > liveP : ent < liveP) : false;
       const trade: Trade = {
         userId: auth.currentUser.uid,
         symbol: symbol.trim().toUpperCase() || 'UNKNOWN',
@@ -469,10 +490,28 @@ export function Calculator() {
         pkrRate: PKR_RATE,
         market: isAlpha ? 'ALPHA' : 'SPOT',
         isAlpha: isAlpha,
+        isStopLimit: isBreakout,
+        marketPriceAtCreation: liveP > 0 ? liveP : undefined,
         notes: notes.trim() || undefined,
         createdAt: Date.now(),
         status: status,
       };
+
+      // Check if there is an active trade or holding for this coin
+      const cleanSym = getCleanSymbol(symbol);
+      const matchingActivePositions = trades.filter(t => 
+        !isTradeClosed(t) && 
+        isSameSymbol(t.symbol, cleanSym) &&
+        !isAlphaTradeOrSymbol(t)
+      );
+
+      if (matchingActivePositions.length > 0) {
+        setPendingTradeForConfirm(trade);
+        setExistingPositionsForConfirm(matchingActivePositions);
+        setShowActiveConfirmModal(true);
+        setIsSaving(false);
+        return;
+      }
 
       await saveTradeOptimistic(trade);
       setSymbol('');
@@ -600,6 +639,21 @@ export function Calculator() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] text-neutral-400 font-medium">Total Equity ($)</label>
+                {totalEquity > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const eff = totalEquity > 0 ? totalEquity : (baseCapital > 0 ? baseCapital : 0);
+                      setPortfolioSize(eff.toFixed(2));
+                      toast.success(`Equity locked to live: $${eff.toFixed(2)}`);
+                    }}
+                    className="text-[10px] text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1 font-mono font-medium"
+                    title="Click to sync Total Equity with latest live balance"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    <span>Sync Live</span>
+                  </button>
+                )}
               </div>
               <Input 
                 type="number" 
@@ -1157,46 +1211,42 @@ export function Calculator() {
         </div>
       </div>
 
-      {/* Save & Binance Execution Action Buttons */}
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2.5">
-          <Button 
-            onClick={() => handleSave('ACTIVE')} 
-            disabled={isSaving || isExecutingBinance || !auth.currentUser || !isPctValid}
-            className="flex-1 h-10 gap-1.5 font-bold shadow-md shadow-blue-950/40 text-xs sm:text-sm"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? "Saving..." : "Save Active Trade"}
-          </Button>
-          <Button 
-            onClick={() => handleSave('PENDING')} 
-            disabled={isSaving || isExecutingBinance || !auth.currentUser || !isPctValid}
-            variant="outline"
-            className="flex-1 h-10 gap-1.5 font-semibold text-xs sm:text-sm"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? "Saving..." : "Save Limit Order"}
-          </Button>
-        </div>
-
-        <div className="flex gap-2.5">
-          <Button 
-            onClick={() => handleExecuteBinance('MARKET')} 
-            disabled={isSaving || isExecutingBinance || !isPctValid}
-            className="flex-1 h-10 gap-1.5 font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md text-xs sm:text-sm"
-          >
-            🚀 {isExecutingBinance ? "Executing..." : "Execute Market on Binance"}
-          </Button>
-          <Button 
-            onClick={() => handleExecuteBinance('LIMIT')} 
-            disabled={isSaving || isExecutingBinance || !isPctValid}
-            variant="outline"
-            className="flex-1 h-10 gap-1.5 font-semibold border-amber-500/50 text-amber-400 hover:bg-amber-950/30 text-xs sm:text-sm"
-          >
-            ⚡ {isExecutingBinance ? "Executing..." : "Execute Limit on Binance"}
-          </Button>
-        </div>
+      {/* Save Action Buttons */}
+      <div className="flex gap-2.5">
+        <Button 
+          onClick={() => handleSave('ACTIVE')} 
+          disabled={isSaving || !auth.currentUser || !isPctValid}
+          className="flex-1 h-10 gap-1.5 font-bold shadow-md shadow-blue-950/40 text-xs sm:text-sm"
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Active Trade"}
+        </Button>
+        <Button 
+          onClick={() => handleSave('PENDING')} 
+          disabled={isSaving || !auth.currentUser || !isPctValid}
+          variant="outline"
+          className="flex-1 h-10 gap-1.5 font-semibold text-xs sm:text-sm"
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Limit Order"}
+        </Button>
       </div>
+
+      {/* Confirmation Modal when opening trade of a coin with an active trade/holding */}
+      {showActiveConfirmModal && pendingTradeForConfirm && (
+        <ActivePositionConfirmModal
+          isOpen={showActiveConfirmModal}
+          onClose={() => {
+            setShowActiveConfirmModal(false);
+            setPendingTradeForConfirm(null);
+          }}
+          symbol={symbol}
+          newTrade={pendingTradeForConfirm}
+          existingPositions={existingPositionsForConfirm}
+          onConfirmNewTrade={handleConfirmNewTrade}
+          onConfirmMerge={handleConfirmMergeTrade}
+        />
+      )}
 
     </div>
   );

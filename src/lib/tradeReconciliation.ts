@@ -1,5 +1,5 @@
 import { Trade } from '../types';
-import { calculateProfit, getTradeIsLong, getTradeEffectiveRisk, isBinanceLinkedTrade, isStopLossAtBreakeven } from './tradeUtils';
+import { calculateProfit, getTradeIsLong, getTradeEffectiveRisk, isBinanceLinkedTrade, isBinanceLimitOrder, isBreakoutStopLimitTrade, isStopLossAtBreakeven, getCleanSymbol } from './tradeUtils';
 
 export interface ReconciliationUpdate {
   tradeId: string;
@@ -42,11 +42,16 @@ export async function reconcileTrade(trade: Trade): Promise<ReconciliationUpdate
     return null; // Already fully concluded
   }
 
-  // CRITICAL: For trades running on Binance Spot, Binance exchange order books and trade history
-  // are the absolute source of truth. NEVER auto-close an active or pending Binance trade via candlestick wicks!
+  // CRITICAL: For trades running on Binance Spot or Long-Term Holdings (Investments), Binance exchange order books
+  // and trade history are the absolute source of truth. NEVER auto-close an active or pending Binance trade or Holding via candlestick wicks!
   // If the user placed Stop Loss or Take Profit orders on Binance, Binance executes them and
   // syncBinanceSpotPositions() / handleSyncExecutions() will sync the actual executed order.
-  if (isBinanceLinkedTrade(trade)) {
+  if (
+    trade.type === 'HOLDING' ||
+    isBinanceLinkedTrade(trade) ||
+    isBinanceLimitOrder(trade) ||
+    Boolean(trade.binanceOrderId)
+  ) {
     return null;
   }
 
@@ -59,8 +64,7 @@ export async function reconcileTrade(trade: Trade): Promise<ReconciliationUpdate
   const slSetTime = trade.slUpdatedAt || trade.updatedAt || (trade.filledAt || trade.createdAt);
 
   try {
-    const rawSym = trade.symbol.trim().toUpperCase();
-    const sym = rawSym.endsWith('USDT') ? rawSym : `${rawSym}USDT`;
+    const sym = getCleanSymbol(trade.symbol);
     const url = `/api/exchange/klines?symbol=${encodeURIComponent(sym)}&interval=${interval}&startTime=${startTime}&limit=1000`;
     const res = await fetch(url).catch(() => null);
     if (!res || !res.ok) {
@@ -84,7 +88,10 @@ export async function reconcileTrade(trade: Trade): Promise<ReconciliationUpdate
 
       // 1. If currently PENDING, check if candle filled the limit order
       if (status === 'PENDING') {
-        const orderFilled = isLong ? (low <= trade.entryPrice) : (high >= trade.entryPrice);
+        const isBreakout = isBreakoutStopLimitTrade(trade);
+        const orderFilled = isBreakout
+          ? (isLong ? high >= trade.entryPrice : low <= trade.entryPrice)
+          : (isLong ? low <= trade.entryPrice : high >= trade.entryPrice);
         if (orderFilled) {
           status = 'ACTIVE';
           filledAt = cTime;

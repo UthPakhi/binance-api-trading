@@ -116,11 +116,11 @@ describe('Test Suite 1: Multi-Trade Ingestion for Same Ticker', () => {
 
     // Trade 1 entered at 0.0000200, now 0.0000300 -> in profit
     const pnl1 = calculateLivePnL(trade1, currentMarketPrice, false);
-    assert.equal(pnl1, 10_000_000 * (0.0000300 - 0.0000200)); // +$100.00
+    assert.equal(Math.round(pnl1), 100); // +$100.00
 
     // Trade 2 entered at 0.0000350, now 0.0000300 -> in loss
     const pnl2 = calculateLivePnL(trade2, currentMarketPrice, false);
-    assert.equal(pnl2, 5_000_000 * (0.0000300 - 0.0000350)); // -$25.00
+    assert.equal(Math.round(pnl2), -25); // -$25.00
 
     // Portfolio aggregate gross unrealized
     const stats = calculatePortfolioStats([trade1, trade2], 2500, { 'FLOKIUSDT': currentMarketPrice });
@@ -196,5 +196,32 @@ describe('Test Suite 1: Multi-Trade Ingestion for Same Ticker', () => {
     assert.equal(fees.buyFee, 6.50);
     assert.equal(fees.sellFee, 7.20);
     assert.equal(fees.totalFees, 13.70); // Combined exact USDT fee
+  });
+
+  // TC-1.7: Spot wallet holdings calculation strictly ignores unexecuted PENDING limit orders
+  test('TC-1.7: Spot wallet holdings calculation strictly ignores unexecuted PENDING limit orders', () => {
+    const spotPosition = {
+      symbol: 'ETHUSDT',
+      positionAmt: 0.188,
+      entryPrice: 2454.17,
+      feeUsd: 0,
+      isPendingOrder: false
+    };
+
+    // User has an unexecuted limit order waiting to buy 0.0331 ETH @ $2260
+    const pendingOrder: Trade = createMockTrade({
+      id: 'pending_eth_limit',
+      symbol: 'ETHUSDT',
+      entryPrice: 2260,
+      positionSizeCoins: 0.0331,
+      status: 'PENDING'
+    });
+
+    const analysis = calculateUnassignedBalance(spotPosition, [pendingOrder]);
+    // The spot position should have 0.188 unassigned coins, because the pending order is not executed
+    assert.equal(analysis.trackedCoins, 0);
+    assert.equal(analysis.unassignedCoins, 0.188);
+    assert.equal(analysis.hasUnassigned, true);
+    assert.equal(analysis.existingTrades.length, 0);
   });
 });

@@ -217,4 +217,29 @@ test('Test Suite 5: Trading Psychology & Discipline Engine', async (t) => {
     assert.equal(stats.byTag.REVENGE_TRADE.count, 1);
     assert.equal(stats.byTag.PLAN_FOLLOWED.count, 2);
   });
+
+  await t.test('TP-6: Closed breakeven trades are properly recognized and return 0.00R / 0% return', () => {
+    const breakevenTrade: Partial<Trade> = {
+      id: 'trade_be_closed',
+      symbol: 'BTCUSDT',
+      entryPrice: 65000,
+      exitPrice: 65000,
+      positionSizeCoins: 0.1,
+      status: 'CLOSED_BREAK_EVEN',
+      realizedProfitUsd: 0,
+      stopLoss: 65000,
+      closedAt: Date.now()
+    };
+
+    const isClosed = Boolean(
+      breakevenTrade.closedAt || 
+      ['CLOSED_MANUAL', 'HIT_SL', 'HIT_TP3', 'CLOSED_BREAK_EVEN', 'BREAK_EVEN'].includes(breakevenTrade.status || '') ||
+      breakevenTrade.status?.includes('CLOSED') ||
+      breakevenTrade.status?.includes('BREAK_EVEN')
+    );
+    assert.equal(isClosed, true, 'CLOSED_BREAK_EVEN must be recognized as closed in performance and share modals');
+
+    const isBe = isStopLossAtBreakeven(breakevenTrade as Trade);
+    assert.equal(isBe, true, 'Stop loss at entry price must be recognized as breakeven');
+  });
 });

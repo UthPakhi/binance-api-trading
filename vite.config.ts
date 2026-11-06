@@ -66,9 +66,13 @@ export default defineConfig(() => {
       })
     ],
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom'],
     },
     server: {
       hmr: false,

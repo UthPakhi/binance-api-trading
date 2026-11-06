@@ -2,19 +2,20 @@ import React, { useState } from 'react';
 import { Input } from './Input';
 import { Button } from './Button';
 import { useTradeContext } from '../lib/TradeContext';
-import { X, Save } from 'lucide-react';
+import { X, Save, Target, Scissors, FileText, Plus } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Trade } from '../types';
+import toast from 'react-hot-toast';
 
 import { 
   calculatePortfolioStats, formatPrice, formatCurrency, formatPkr, 
   calculateTargetRR, calculateTargetProfit, calculateTargetSellFee,
-  isAlphaTradeOrSymbol
+  isAlphaTradeOrSymbol, formatPartialExitNote, parseStructuredTradeNotes
 } from '../lib/tradeUtils';
 
 export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () => void }) {
-  const { trades, baseCapital, livePrices, pkrRate } = useTradeContext();
+  const { trades, baseCapital, livePrices, pkrRate, effectiveFeeRate } = useTradeContext();
   const { availableCapital, totalEquity } = calculatePortfolioStats(trades, baseCapital, livePrices);
   
   const initialPortfolio = trade.portfolioSize && Math.abs(trade.portfolioSize - baseCapital) > 1
@@ -56,13 +57,21 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
   const [status, setStatus] = useState<string>(trade.status || 'ACTIVE');
   const [tradeType, setTradeType] = useState<'TRADE' | 'HOLDING'>(trade.type || 'TRADE');
   const [realizedProfit, setRealizedProfit] = useState<string>((trade.realizedProfitUsd || 0).toString());
+  const [soldCoinsInput, setSoldCoinsInput] = useState<string>((trade.soldCoins || 0).toString());
+  const [notesInput, setNotesInput] = useState<string>(trade.notes || '');
+
+  // Quick exit log helper
+  const [exitPriceQuick, setExitPriceQuick] = useState<string>(trade.entryPrice ? formatPrice(trade.entryPrice).toString() : '');
+  const [exitCoinsQuick, setExitCoinsQuick] = useState<string>('');
+  const [exitPercentQuick, setExitPercentQuick] = useState<string>('50');
   
   const [totalBuyInput, setTotalBuyInput] = useState<string>(initialTotalBuy ? initialTotalBuy.toString() : '0');
   const [coinsInput, setCoinsInput] = useState<string>(initialCoins ? initialCoins.toString() : '0');
 
   const [isSaving, setIsSaving] = useState(false);
 
-  const PKR_RATE = trade.pkrRate || pkrRate || 283.89;
+  const isClosed = ['CLOSED_MANUAL', 'HIT_SL', 'CLOSED_BREAK_EVEN', 'BREAK_EVEN', 'HIT_TP3'].includes(trade.status || '');
+  const PKR_RATE = isClosed ? ((trade.pkrRate && trade.pkrRate !== 285) ? trade.pkrRate : (pkrRate || 283.89)) : (pkrRate || 283.89);
 
   const pSize = parseFloat(portfolioSize) || 0;
   const rPct = parseFloat(riskPercent) || 0;
@@ -100,7 +109,7 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
     const tb = parseFloat(val) || 0;
     const e = parseFloat(entry) || 0;
     if (e > 0) {
-      const c = (tb * 0.999) / e;
+      const c = tb / e;
       setCoinsInput(c.toFixed(6));
       updateRiskFromSize(c, e, parseFloat(sl) || 0, parseFloat(portfolioSize) || 0);
     }
@@ -111,7 +120,7 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
     const c = parseFloat(val) || 0;
     const e = parseFloat(entry) || 0;
     if (e > 0) {
-      const tb = (c * e) / 0.999;
+      const tb = c * e;
       setTotalBuyInput(tb.toFixed(2));
       updateRiskFromSize(c, e, parseFloat(sl) || 0, parseFloat(portfolioSize) || 0);
     }
@@ -150,7 +159,7 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
     }
   };
   
-  const FEE_RATE = 0.001;
+  const FEE_RATE = effectiveFeeRate ?? 0.001;
   const buyFeeUsd = totalBuy * FEE_RATE;
 
   const profit1 = calculateTargetProfit(ent, stop, t1, coins, t1Pct);
@@ -174,10 +183,10 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
     const newStatus = e.target.value;
     setStatus(newStatus);
     if (newStatus === 'ACTIVE') setRealizedProfit('0');
-    else if (newStatus === 'HIT_SL') setRealizedProfit((-riskAmount - expectedStopFeeUsd).toString());
-    else if (newStatus === 'HIT_TP1') setRealizedProfit((profit1 - buyFeeUsd - sellFee1).toString());
-    else if (newStatus === 'HIT_TP2') setRealizedProfit((profit1 + profit2 - buyFeeUsd - sellFee1 - sellFee2).toString());
-    else if (newStatus === 'HIT_TP3') setRealizedProfit((profit1 + profit2 + profit3).toString());
+    else if (newStatus === 'HIT_SL') setRealizedProfit((-riskAmount - expectedStopFeeUsd).toFixed(2));
+    else if (newStatus === 'HIT_TP1') setRealizedProfit((profit1 - buyFeeUsd - sellFee1).toFixed(2));
+    else if (newStatus === 'HIT_TP2') setRealizedProfit((profit1 + profit2 - buyFeeUsd - sellFee1 - sellFee2).toFixed(2));
+    else if (newStatus === 'HIT_TP3') setRealizedProfit((profit1 + profit2 + profit3 - totalFeeUsd).toFixed(2));
     else if (newStatus === 'TARGET_BREAK_EVEN') {
       setRealizedProfit('0');
       setSl('');
@@ -194,10 +203,43 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
     }
   };
 
+  const handleAddExitNote = (isProfitExit: boolean) => {
+    const p = parseFloat(exitPriceQuick) || 0;
+    const entVal = parseFloat(entry) || 0;
+    const cVal = parseFloat(exitCoinsQuick) || (coins * ((parseFloat(exitPercentQuick) || 50) / 100));
+    const pctVal = parseFloat(exitPercentQuick) || (coins > 0 ? Math.round((cVal / coins) * 100) : 50);
+    
+    if (p <= 0 || cVal <= 0) {
+      toast.error("Please enter a valid exit price and coin amount.");
+      return;
+    }
+
+    const noteLine = formatPartialExitNote({
+      trade: { entryPrice: entVal, symbol, type: tradeType },
+      exitPrice: p,
+      exitCoins: cVal,
+      exitPercent: pctVal,
+      reason: isProfitExit ? 'Profit Banked' : 'Loss Cut'
+    });
+
+    const nextNotes = notesInput ? `${notesInput}\n${noteLine}` : noteLine;
+    setNotesInput(nextNotes);
+
+    // Also update realized profit (net of proportional fees) and sold coins
+    const pnlPerCoin = p - entVal;
+    const exitFee = (cVal * entVal * FEE_RATE) + (cVal * p * FEE_RATE);
+    const exitPnl = (cVal * pnlPerCoin) - exitFee;
+    const nextRealized = (parseFloat(realizedProfit) || 0) + exitPnl;
+    setRealizedProfit(nextRealized.toFixed(2));
+
+    const nextSold = (parseFloat(soldCoinsInput) || 0) + cVal;
+    setSoldCoinsInput(nextSold.toString());
+  };
+
   const handleSave = async () => {
     if (coins === 0 || totalBuy === 0) return;
     if (!isPctValid) {
-      alert("Total sell percentage must be exactly 100%.");
+      toast.error("Total sell percentage must be exactly 100%.");
       return;
     }
     
@@ -206,7 +248,7 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
       const oldTotalBuy = trade.status === 'ACTIVE' || trade.status === 'PENDING' ? (trade.totalBuyUsd || 0) : 0;
       const effectiveAvailable = availableCapital + oldTotalBuy;
       if (totalBuy > effectiveAvailable + 0.01) {
-        alert(`Insufficient funds! You only have $${effectiveAvailable.toFixed(2)} available for this trade. Required: $${totalBuy.toFixed(2)}`);
+        toast.error(`Insufficient funds! You only have $${effectiveAvailable.toFixed(2)} available for this trade. Required: $${totalBuy.toFixed(2)}`);
         return;
       }
     }
@@ -259,11 +301,14 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
         totalProfitUsd: totalNetProfitUsd,
         feeUsd: totalFeeUsd,
         totalProfitPkr,
+        pkrRate: PKR_RATE,
         status: finalStatus,
         type: tradeType,
         market: trade.market || (isAlpha ? 'ALPHA' : 'SPOT'),
         isAlpha: isAlpha,
         realizedProfitUsd: finalRealized,
+        soldCoins: parseFloat(soldCoinsInput) || 0,
+        notes: notesInput.trim() || null,
         notifiedMilestones: updatedNotified,
         updatedAt: now,
         ...(stop > 0 ? { slUpdatedAt: now } : {}),
@@ -273,7 +318,7 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
       onClose();
     } catch (e) {
       console.error(e);
-      alert("Failed to update trade.");
+      toast.error("Failed to update trade.");
     } finally {
       setIsSaving(false);
     }
@@ -499,6 +544,148 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
               Total sell percentage must be exactly 100%.
             </div>
           )}
+        </div>
+
+        {/* Banked Profit, Loss Cut & Activity Journal Notes */}
+        <div className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 shadow-sm flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-neutral-100 flex items-center gap-1.5">
+              <FileText className="w-4 h-4 text-sky-400" />
+              Profit Banked, Loss Cut &amp; Notes
+            </h2>
+            <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
+              (parseFloat(realizedProfit) || 0) >= 0 
+                ? 'bg-blue-950/70 text-blue-300 border-blue-700/80' 
+                : 'bg-neutral-800 text-slate-300 border-neutral-700'
+            }`}>
+              {(parseFloat(realizedProfit) || 0) >= 0 
+                ? `🎯 Banked: +$${(parseFloat(realizedProfit) || 0).toFixed(2)}` 
+                : `✂️ Loss Cut: -$${Math.abs(parseFloat(realizedProfit) || 0).toFixed(2)}`}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-neutral-400 mb-1 block uppercase font-semibold">
+                Total Banked / Realized PnL ($)
+              </label>
+              <Input 
+                type="number" 
+                step="0.01" 
+                value={realizedProfit} 
+                onChange={(e) => setRealizedProfit(e.target.value)} 
+                className="font-mono"
+              />
+              <span className="text-[10px] text-neutral-500 font-mono mt-0.5 block">
+                {formatPkr((parseFloat(realizedProfit) || 0) * PKR_RATE)}
+              </span>
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-400 mb-1 block uppercase font-semibold">
+                Coins Sold Along Way
+              </label>
+              <Input 
+                type="number" 
+                step="0.0001" 
+                value={soldCoinsInput} 
+                onChange={(e) => setSoldCoinsInput(e.target.value)} 
+                className="font-mono"
+              />
+              <span className="text-[10px] text-neutral-500 font-mono mt-0.5 block">
+                {coins > 0 ? `${Math.min(100, Math.round(((parseFloat(soldCoinsInput) || 0) / coins) * 100))}% of initial size` : ''}
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Exit Calculator Helper */}
+          <div className="bg-neutral-950 p-3 rounded-lg border border-neutral-800 flex flex-col gap-2">
+            <span className="text-[11px] font-semibold text-neutral-300 flex items-center justify-between">
+              <span>Quick Record Exit at Price:</span>
+              {parseFloat(exitPriceQuick) > 0 && parseFloat(entry) > 0 && (
+                <span className={`text-[10px] font-mono font-bold ${
+                  parseFloat(exitPriceQuick) >= parseFloat(entry) ? 'text-blue-300' : 'text-slate-300'
+                }`}>
+                  {parseFloat(exitPriceQuick) >= parseFloat(entry) ? '🎯 In Profit' : '✂️ In Loss'} (
+                  {(((parseFloat(exitPriceQuick) - parseFloat(entry)) / parseFloat(entry)) * 100).toFixed(1)}%)
+                </span>
+              )}
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[9px] text-neutral-500 uppercase font-semibold block mb-0.5">Exit Price ($)</label>
+                <Input 
+                  type="number" 
+                  step="0.0001" 
+                  value={exitPriceQuick} 
+                  onChange={(e) => setExitPriceQuick(e.target.value)} 
+                  placeholder="Price"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-neutral-500 uppercase font-semibold block mb-0.5">Coins to Exit</label>
+                <Input 
+                  type="number" 
+                  step="0.0001" 
+                  value={exitCoinsQuick} 
+                  onChange={(e) => setExitCoinsQuick(e.target.value)} 
+                  placeholder={coins > 0 ? (coins * 0.5).toFixed(2) : "Coins"}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-neutral-500 uppercase font-semibold block mb-0.5">Or Sell %</label>
+                <Input 
+                  type="number" 
+                  step="1" 
+                  value={exitPercentQuick} 
+                  onChange={(e) => {
+                    setExitPercentQuick(e.target.value);
+                    const pct = parseFloat(e.target.value) || 0;
+                    if (coins > 0) setExitCoinsQuick((coins * (pct / 100)).toFixed(4));
+                  }} 
+                  placeholder="50%"
+                  className="h-8 text-xs font-mono text-center"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddExitNote(true)}
+                className="h-7 text-[11px] font-bold text-blue-300 bg-blue-950/40 border-blue-700/60 hover:bg-blue-900/50 flex items-center justify-center gap-1"
+              >
+                <Target className="w-3 h-3 text-blue-400" />
+                + Bank Profit
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddExitNote(false)}
+                className="h-7 text-[11px] font-bold text-slate-300 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 flex items-center justify-center gap-1"
+              >
+                <Scissors className="w-3 h-3 text-slate-400" />
+                + Cut Loss
+              </Button>
+            </div>
+          </div>
+
+          {/* Notes Textarea */}
+          <div>
+            <label className="text-xs text-neutral-400 mb-1 block uppercase font-semibold">
+              Trade Notes &amp; Activity Log (One execution per line)
+            </label>
+            <textarea
+              value={notesInput}
+              onChange={(e) => setNotesInput(e.target.value)}
+              placeholder="e.g. 🎯 Profit Banked 50% @ $1.50: +$150.00 (1,000 coins · +25.0%)&#10;✂️ Loss Cut 25% @ $0.80: -$30.00 (500 coins · -15.0%)"
+              rows={4}
+              className="flex w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-neutral-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-neutral-600 resize-y"
+            />
+          </div>
         </div>
 
         <Button onClick={handleSave} disabled={isSaving || !isPctValid} size="lg" className="w-full gap-2 mt-2">

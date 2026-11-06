@@ -3,7 +3,8 @@ import { Button } from './Button';
 import { X, Copy, Check, Sparkles, Share2, Shield, TrendingUp, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Trade } from '../types';
-import { formatPrice, getTradeIsLong, isAlphaTradeOrSymbol, getTradeCoins, getTradeExitPrice } from '../lib/tradeUtils';
+import { formatPrice, formatPkr, getTradeIsLong, isAlphaTradeOrSymbol, getTradeCoins, getTradeExitPrice } from '../lib/tradeUtils';
+import { useTradeContext } from '../lib/TradeContext';
 
 interface SharePnLModalProps {
   trade: Trade;
@@ -19,9 +20,19 @@ export function SharePnLModal({ trade, livePrice, onClose }: SharePnLModalProps)
 
   const isLong = getTradeIsLong(trade);
   const isAlpha = trade.market === 'ALPHA' || trade.isAlpha || isAlphaTradeOrSymbol(trade);
-  const isClosed = Boolean(trade.closedAt || trade.status === 'CLOSED_MANUAL' || trade.status === 'HIT_SL' || trade.status === 'HIT_TP3');
+  const isClosed = Boolean(
+    trade.closedAt || 
+    ['CLOSED_MANUAL', 'HIT_SL', 'HIT_TP3', 'CLOSED_BREAK_EVEN', 'BREAK_EVEN'].includes(trade.status || '') ||
+    trade.status?.includes('CLOSED') ||
+    trade.status?.includes('BREAK_EVEN')
+  );
 
-  const currentPrice = isClosed ? (getTradeExitPrice(trade) || trade.entryPrice) : (livePrice || trade.entryPrice);
+  const { pkrRate } = useTradeContext();
+  const currentPkrRate = isClosed 
+    ? ((trade.pkrRate && trade.pkrRate !== 285) ? trade.pkrRate : pkrRate)
+    : pkrRate;
+
+  const currentPrice = isClosed ? (getTradeExitPrice(trade) || trade.exitPrice || trade.entryPrice) : (livePrice || trade.entryPrice);
   const entry = trade.entryPrice || 0;
   
   // Calculate PnL
@@ -41,13 +52,13 @@ export function SharePnLModal({ trade, livePrice, onClose }: SharePnLModalProps)
 
   // R-Multiple
   const riskAmount = trade.riskAmount || (trade.stopLoss && entry ? Math.abs(entry - trade.stopLoss) * coins : 0);
-  const rMultiple = riskAmount > 0 ? (pnlUsd / riskAmount).toFixed(2) : null;
+  const rMultiple = (riskAmount > 0) ? (pnlUsd / riskAmount).toFixed(2) : ((trade.status === 'CLOSED_BREAK_EVEN' || trade.status === 'BREAK_EVEN') ? '0.00' : null);
   const isWin = pnlUsd >= 0;
 
   const handleCopyText = async () => {
     const text = `🎯 ${trade.symbol} ${isAlpha ? '[ALPHA]' : ''} ${isLong ? 'LONG' : 'SHORT'}
 📈 Result: ${isWin ? '+' : ''}${pnlPercent.toFixed(2)}% ${rMultiple ? `(${rMultiple}R)` : ''}
-${hideDollar ? '' : `💰 PnL: ${isWin ? '+' : ''}$${pnlUsd.toFixed(2)}\n`}📍 Entry: $${formatPrice(entry)} ➔ ${isClosed ? 'Exit' : 'Live'}: $${formatPrice(currentPrice)}
+${hideDollar ? '' : `💰 PnL: ${isWin ? '+' : ''}$${pnlUsd.toFixed(2)} (${formatPkr(pnlUsd * currentPkrRate)})\n`}📍 Entry: $${formatPrice(entry)} ➔ ${isClosed ? 'Exit' : 'Live'}: $${formatPrice(currentPrice)}
 ⚡ Powered by Trade Sizer`;
     try {
       await navigator.clipboard.writeText(text);
@@ -179,9 +190,14 @@ ${hideDollar ? '' : `💰 PnL: ${isWin ? '+' : ''}$${pnlUsd.toFixed(2)}\n`}📍 
                 )}
               </div>
               {!hideDollar && (
-                <span className={`text-sm font-bold font-mono mt-1 ${isWin ? 'text-sky-400/90' : 'text-slate-300/90'}`}>
-                  {isWin ? '+' : ''}${pnlUsd.toFixed(2)} USD
-                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-sm font-bold font-mono ${isWin ? 'text-sky-400/90' : 'text-slate-300/90'}`}>
+                    {isWin ? '+' : ''}${pnlUsd.toFixed(2)} USD
+                  </span>
+                  <span className="text-xs text-neutral-400 font-mono">
+                    ({formatPkr(pnlUsd * currentPkrRate)})
+                  </span>
+                </div>
               )}
             </div>
 

@@ -102,3 +102,6 @@ export function TradeProgressBar({ trade, currentPrice }: TradeProgressBarProps)
     </div>
   );
 }
+
+export default TradeProgressBar;
+

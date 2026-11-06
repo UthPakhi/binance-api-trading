@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Trade } from '../types';
-import { formatPrice, isAlphaTradeOrSymbol, getTradeInvestedAmount, calculateRemainingCoins } from '../lib/tradeUtils';
+import { formatPrice, isAlphaTradeOrSymbol, getTradeInvestedAmount, calculateRemainingCoins, isSameSymbol, getCleanSymbol } from '../lib/tradeUtils';
 import { calculateUnassignedBalance, calculateMergedDCA, BinancePositionItem } from '../lib/tradeIngestion';
 
 interface ImportTradeModalProps {
@@ -21,7 +21,8 @@ interface ImportTradeModalProps {
     isPending?: boolean, 
     type?: 'TRADE' | 'HOLDING', 
     market?: 'SPOT' | 'ALPHA',
-    binanceOrderId?: string
+    binanceOrderId?: string,
+    forceNewTrade?: boolean
   ) => void;
   onUpdateRunning?: (tradeId: string, entry: number, size: number, feeUsd?: number) => void;
   onMergeDCA?: (tradeId: string, addedCoins: number, addedPrice: number, addedFeeUsd?: number) => void;
@@ -96,7 +97,7 @@ export function ImportTradeModal({
   const fetchAlphaPrice = async (sym: string) => {
     setAlphaPriceLoading(true);
     try {
-      const cleanSym = sym.toUpperCase().endsWith('USDT') ? sym.toUpperCase() : `${sym.toUpperCase()}USDT`;
+      const cleanSym = getCleanSymbol(sym);
       const res = await fetch(`/api/exchange/ticker?symbols=${cleanSym}`);
       const data = await res.json();
       if (data.status === 'success' && data.prices && data.prices[cleanSym]) {
@@ -224,7 +225,7 @@ export function ImportTradeModal({
       toast.error('Please enter a valid coin amount or USD size');
       return;
     }
-    const cleanSym = alphaSymbol.toUpperCase().endsWith('USDT') ? alphaSymbol.toUpperCase() : `${alphaSymbol.toUpperCase()}USDT`;
+    const cleanSym = getCleanSymbol(alphaSymbol);
     onSelect(cleanSym, price, coins, 0, false, type, 'ALPHA');
   };
 
@@ -350,7 +351,7 @@ export function ImportTradeModal({
                      const isPendingTracked = p.isPendingOrder && activeTrades.some(t => {
                        if (t.status !== 'PENDING' && t.status !== 'ACTIVE') return false;
                        if (p.binanceOrderId && t.binanceOrderId && String(p.binanceOrderId) === String(t.binanceOrderId)) return true;
-                       return t.symbol === p.symbol && Math.abs((t.entryPrice || 0) - p.entryPrice) <= (p.entryPrice * 0.001 || 0.001);
+                       return isSameSymbol(t.symbol, p.symbol) && Math.abs((t.entryPrice || 0) - p.entryPrice) <= (p.entryPrice * 0.002 || 0.01);
                      });
 
                      return (
@@ -433,10 +434,10 @@ export function ImportTradeModal({
                                    size="sm" 
                                    onClick={() => onUpdateRunning(primaryTrade.id!, p.entryPrice, p.positionAmt, p.feeUsd)}
                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 font-semibold flex items-center gap-1.5"
-                                   title="Reconcile and sync this trade directly with Binance wallet total"
+                                   title="Reconcile and sync this position directly with Binance wallet total"
                                  >
                                    <RefreshCw className="w-3.5 h-3.5" />
-                                   Sync Running Trade
+                                   Sync Running {primaryTrade.type === 'HOLDING' ? 'Holding' : 'Trade'}
                                  </Button>
                                )}
 
@@ -445,7 +446,7 @@ export function ImportTradeModal({
                                  size="sm" 
                                  onClick={() => {
                                    const qtyToImport = analysis.hasUnassigned ? analysis.unassignedCoins : p.positionAmt;
-                                   onSelect(p.symbol, p.entryPrice, qtyToImport, p.feeUsd, p.isPendingOrder, 'TRADE', 'SPOT', p.binanceOrderId);
+                                   onSelect(p.symbol, p.entryPrice, qtyToImport, p.feeUsd, p.isPendingOrder, 'TRADE', 'SPOT', p.binanceOrderId, true);
                                  }}
                                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 font-semibold flex items-center gap-1 shadow-sm"
                                  title="Create a completely separate, independent trade record with its own stops and targets"
@@ -474,7 +475,7 @@ export function ImportTradeModal({
                                  variant="outline" 
                                  onClick={() => {
                                    const qtyToImport = analysis.hasUnassigned ? analysis.unassignedCoins : p.positionAmt;
-                                   onSelect(p.symbol, p.entryPrice, qtyToImport, p.feeUsd, p.isPendingOrder, 'HOLDING', 'SPOT', p.binanceOrderId);
+                                   onSelect(p.symbol, p.entryPrice, qtyToImport, p.feeUsd, p.isPendingOrder, 'HOLDING', 'SPOT', p.binanceOrderId, true);
                                  }}
                                  className="text-purple-300 border-purple-700/60 hover:bg-purple-950/40 text-xs h-8 font-semibold flex items-center gap-1"
                                  title="Import unassigned coins as a passive long-term holding"
@@ -547,14 +548,24 @@ export function ImportTradeModal({
                                            Order #{f.orderId} • {new Date(f.time).toLocaleDateString()}
                                          </span>
                                        </div>
-                                       <Button
-                                         size="sm"
-                                         variant="outline"
-                                         onClick={() => onSelect(p.symbol, f.price, f.qty, f.feeUsd, false, 'TRADE', 'SPOT', f.orderId)}
-                                         className="h-6 text-[10px] px-2 border-neutral-700 hover:bg-neutral-800 text-neutral-300 font-semibold"
-                                       >
-                                         Import Fill
-                                       </Button>
+                                       {activeTrades.some(t => 
+                                         (t.binanceOrderId && String(t.binanceOrderId) === String(f.orderId)) ||
+                                         (t.clientOrderId && String(t.clientOrderId) === String(f.orderId))
+                                       ) ? (
+                                         <span className="text-[10px] text-sky-400 bg-blue-950/30 border border-blue-500/20 px-2 py-0.5 rounded font-semibold flex items-center gap-1">
+                                           <Check className="w-3 h-3 text-sky-400" />
+                                           Imported
+                                         </span>
+                                       ) : (
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => onSelect(p.symbol, f.price, f.qty, f.feeUsd, false, 'TRADE', 'SPOT', f.orderId)}
+                                           className="h-6 text-[10px] px-2 border-neutral-700 hover:bg-neutral-800 text-neutral-300 font-semibold"
+                                         >
+                                           Import Fill
+                                         </Button>
+                                       )}
                                      </div>
                                    ))}
                                  </div>

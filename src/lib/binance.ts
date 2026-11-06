@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import {
+  getInitialTickerCacheSync,
+  loadTickerCacheFromIDB,
+  saveTickerCacheToIDB,
+} from './offlineStorage';
 
 let cachedSymbols: string[] | null = null;
 let fetchingSymbols: Promise<string[]> | null = null;
@@ -46,9 +51,11 @@ export const fetchBinanceSymbols = async (): Promise<string[]> => {
 };
 
 export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0) {
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const pricesRef = useRef<Record<string, number>>({});
+  const initialTickers = getInitialTickerCacheSync();
+  const [prices, setPrices] = useState<Record<string, number>>(() => initialTickers);
+  const pricesRef = useRef<Record<string, number>>({ ...initialTickers });
   const lastUpdateRef = useRef<number>(Date.now());
+  const lastIdbPersistRef = useRef<number>(0);
   const lastWsMessageRef = useRef<number>(Date.now());
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,6 +63,35 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
   const wsRef = useRef<WebSocket | null>(null);
   const futWsRef = useRef<WebSocket | null>(null);
   const [reconnectCounter, setReconnectCounter] = useState<number>(0);
+
+  const persistTickersThrottled = (force = false) => {
+    const now = Date.now();
+    if (force || now - lastIdbPersistRef.current > 3000) {
+      lastIdbPersistRef.current = now;
+      saveTickerCacheToIDB({ ...pricesRef.current });
+    }
+  };
+
+  // Hydrate full ticker cache from IndexedDB on initial mount for instant offline/poor-cellular resilience
+  useEffect(() => {
+    let mounted = true;
+    loadTickerCacheFromIDB().then((idbPrices) => {
+      if (!mounted || !idbPrices) return;
+      let mergedChanged = false;
+      for (const [sym, val] of Object.entries(idbPrices)) {
+        if (typeof val === 'number' && val > 0 && !pricesRef.current[sym]) {
+          pricesRef.current[sym] = val;
+          mergedChanged = true;
+        }
+      }
+      if (mergedChanged) {
+        setPrices({ ...pricesRef.current });
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const activeSymbols = symbols
@@ -85,6 +121,7 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
 
     // Function to fetch prices via our multi-source backend (Spot + Futures + Alpha)
     const fetchPrices = async () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       try {
         const res = await fetch(`/api/exchange/ticker?symbols=${encodeURIComponent(activeSymbols.join(','))}`);
         if (res.ok) {
@@ -101,11 +138,12 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
             if (changed) {
               setPrices({ ...pricesRef.current });
               lastUpdateRef.current = Date.now();
+              persistTickersThrottled();
             }
           }
         }
-      } catch (err) {
-        // Backend ticker will retry on next poll cycle; avoid direct browser cross-origin requests
+      } catch {
+        // Backend ticker will retry on next poll cycle; preserve cached prices silently
       }
     };
 
@@ -116,25 +154,28 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
     pollIntervalRef.current = setInterval(fetchPrices, 2000);
 
     // Watchdog timer: checks socket heartbeat every 4 seconds.
-    // If the WebSocket heartbeat hasn't received messages in > 6 seconds, triggers instant REST snapshot
-    // and re-establishes fresh socket connections.
     lastWsMessageRef.current = Date.now();
     watchdogIntervalRef.current = setInterval(() => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       const now = Date.now();
       const timeSinceLastWs = now - lastWsMessageRef.current;
       if (timeSinceLastWs > 6000) {
-        // Socket heartbeat has stalled: trigger immediate REST snapshot fallback
         fetchPrices();
-        // If socket is dead/stuck for > 10 seconds, trigger reconnection
         if (timeSinceLastWs > 10000) {
-          lastWsMessageRef.current = now; // reset heartbeat window
+          lastWsMessageRef.current = now;
           setReconnectCounter(prev => prev + 1);
         }
       }
     }, 4000);
 
+    const handleNetworkOnline = () => {
+      fetchPrices();
+      setReconnectCounter(prev => prev + 1);
+    };
+    window.addEventListener('online', handleNetworkOnline);
+
     // Setup Spot WebSocket for standard spot symbols if supported
-    if (typeof WebSocket !== 'undefined') {
+    if (typeof WebSocket !== 'undefined' && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
       try {
         const spotStreams = activeSymbols
           .filter(s => s !== 'FARTCOINUSDT' && s.length <= 15)
@@ -148,7 +189,6 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
             wsRef.current = null;
           }
 
-          // Use standard HTTPS port 443 rather than 9443 to avoid Safari WebKit pattern errors
           const wsUrl = `wss://stream.binance.com/stream?streams=${spotStreams}`;
           const ws = new WebSocket(wsUrl);
           wsRef.current = ws;
@@ -161,7 +201,6 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
           };
 
           ws.onclose = () => {
-            // If closed unexpectedly, trigger fallback fetch immediately
             fetchPrices();
           };
 
@@ -174,6 +213,7 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
                 const price = parseFloat(data.data.c);
                 if (price > 0) {
                   pricesRef.current[sym] = price;
+                  persistTickersThrottled();
                   
                   const now = Date.now();
                   if (now - lastUpdateRef.current > 800) {
@@ -189,12 +229,12 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
                   }
                 }
               }
-            } catch (e) {
+            } catch {
               // Ignore WS parse errors
             }
           };
         }
-      } catch (wsErr) {
+      } catch {
         // Fall back gracefully to REST polling without throwing
       }
 
@@ -235,6 +275,7 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
                 const price = parseFloat(data.data.c);
                 if (price > 0) {
                   pricesRef.current[sym] = price;
+                  persistTickersThrottled();
                   const now = Date.now();
                   if (now - lastUpdateRef.current > 800) {
                     setPrices({ ...pricesRef.current });
@@ -249,17 +290,18 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
                   }
                 }
               }
-            } catch (e) {
+            } catch {
               // Ignore parse errors on futures ws
             }
           };
         }
-      } catch (fWsErr) {
+      } catch {
         // Fall back gracefully to REST polling without throwing
       }
     }
 
     return () => {
+      window.removeEventListener('online', handleNetworkOnline);
       if (wsRef.current) {
         try { wsRef.current.close(); } catch (_) {}
         wsRef.current = null;
@@ -284,3 +326,4 @@ export function useBinanceTickers(symbols: string[], refreshTrigger: number = 0)
 
   return prices;
 }
+

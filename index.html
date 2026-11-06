@@ -68,25 +68,36 @@
         color-scheme: dark;
         background-color: #000000;
       }
-      html, body {
+      html {
         background-color: #000000 !important;
         color: #ffffff;
         color-scheme: dark;
         margin: 0;
         padding: 0;
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
+        width: 100%;
+        height: 100%;
+        min-height: calc(100% + env(safe-area-inset-top, 0px));
+        overflow: hidden;
+        overscroll-behavior-y: none;
         -webkit-tap-highlight-color: transparent;
       }
-      #root {
-        background-color: #000000;
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
+      body, #root {
+        background-color: #000000 !important;
+        color: #ffffff;
+        color-scheme: dark;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        overflow: hidden;
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
       }
     </style>
   </head>
   <body style="background-color: #000000; color-scheme: dark; margin: 0; padding: 0;">
-    <div id="root" style="background-color: #000000; min-height: 100vh;"></div>
+    <div id="root" style="background-color: #000000; width: 100%; height: 100%; overflow: hidden;"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

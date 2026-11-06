@@ -1,0 +1,201 @@
+=== 0GUSDT (5) ===
+  [CLOSED_MANUAL] (TRADE) id=zYV5PZgwu2MMpFiQg87i | ord=904811 | entry=2.09 exit=2.12 coins=28.5 sold=undefined buy$=59.61 sell$=60.4 pnl=0.67 | open=2026-09-25T15:26 close=2026-09-26T05:20
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_223686660 | ord=223686660 | entry=0.2935 exit=0.33 coins=257.96 sold=257.96 buy$=75.7113 sell$=85.1268 pnl=9.3656 | open=2026-09-29T10:12 close=2026-09-29T12:03
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_224220724 | ord=224220724 | entry=0.2935 exit=0.36 coins=128.98 sold=128.98 buy$=37.8556 sell$=46.4328 pnl=8.5307 | open=2026-09-29T10:12 close=2026-09-30T05:20
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_227840423 | ord=227840423 | entry=0.2935 exit=0.3351 coins=128.98 sold=128.98 buy$=37.8556 sell$=43.2212 pnl=5.3223 | open=2026-09-29T10:12 close=2026-09-30T11:10
+  [CLOSED_MANUAL] (TRADE) id=p3Elo8fS32UMWgrRd9zL | ord=223685513 | entry=0.2935 exit=0.338775 coins=515.92 sold=515.92 buy$=151.42 sell$=174.78 pnl=23.09 | open=2026-09-29T10:13 close=2026-09-30T11:10
+=== ADAUSDT (7) ===
+  [CLOSED_MANUAL] (TRADE) id=oDd2jSCJ6Vsycx4J0VJW | ord=8780843743 | entry=0.225 exit=0.2158 coins=1317.1 sold=1315.7 buy$=296.3475 sell$=283.9281 pnl=-12.7034 | open=2026-09-08T17:22 close=2026-09-09T15:07
+  [CLOSED_MANUAL] (TRADE) id=s5aHl7K15OVM5RO4MwtP | ord=8780622310 | entry=0.225 exit=0.21583795 coins=1317.1 sold=1317.1 buy$=296.35 sell$=284.28 pnl=-12.65 | open=2026-09-08T17:22 close=2026-10-02T17:20
+  [CLOSED_MANUAL] (TRADE) id=3oEMFwhuQ8C6BHkV8OLV | ord=892014 | entry=0.864 exit=0.885 coins=115.7 sold=undefined buy$=99.96 sell$=102.4 pnl=2.24 | open=2026-09-22T04:06 close=2026-09-22T18:00
+  [CLOSED_MANUAL] (TRADE) id=Ko1UHusuid8qrmF5ddyZ | ord=892014 | entry=0.864 exit=0.885 coins=115.7 sold=undefined buy$=99.96 sell$=102.4 pnl=2.24 | open=2026-09-22T04:06 close=2026-09-22T18:00
+  [CLOSED_MANUAL] (TRADE) id=fHX9gtiJWXTxsgVJuMPb | ord=892014 | entry=0.864 exit=0.885 coins=115.7 sold=undefined buy$=99.96 sell$=102.4 pnl=2.24 | open=2026-09-22T04:06 close=2026-09-22T18:00
+  [CLOSED_MANUAL] (TRADE) id=kULTBJ3odE1Fl7P2QPTd | ord=892014 | entry=0.864 exit=0.885 coins=115.7 sold=undefined buy$=99.96 sell$=102.4 pnl=2.24 | open=2026-09-22T04:06 close=2026-09-22T18:00
+  [CLOSED_MANUAL] (TRADE) id=evGkbAqDg5JBpsSciEJJ | ord=8821649686 | entry=0.257 exit=0.2515 coins=1732.2 sold=1730.4 buy$=445.1754 sell$=435.1956 pnl=-10.415 | open=2026-10-02T05:00 close=2026-10-02T17:20
+=== ALLOUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=clAmeVELHauDUBYJivhA | ord=446268813 | entry=0.2812 exit=0.2652 coins=426.7 sold=426.2 buy$=119.988 sell$=113.0282 pnl=-7.0728 | open=2026-09-21T17:18 close=2026-09-21T19:27
+=== ARBUSDT (6) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_3680976235 | ord=3680976235 | entry=0.144 exit=0.14 coins=861.1 sold=859.3 buy$=123.9984 sell$=120.302 pnl=-3.7932 | open=2026-09-11T16:29 close=2026-09-15T15:05
+  [CLOSED_MANUAL] (TRADE) id=cmEyDnx9dqCXQ4T9nDFL | ord=3676451497 | entry=0.144 exit=0.144 coins=857.6 sold=857.6 buy$=123.49 sell$=123.49 pnl=-0.22 | open=2026-09-11T17:42 close=2026-09-15T18:53
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_3681154797 | ord=3703209884 | entry=0.224 exit=0.225 coins=1183 sold=1181.8 buy$=264.992 sell$=265.905 pnl=0.6471 | open=2026-09-21T17:33 close=2026-09-21T17:58
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_3701703777 | ord=3701703777 | entry=0.224 exit=0.22495828 coins=1183 sold=1183 buy$=264.99 sell$=266.13 pnl=0.6 | open=2026-09-21T17:33 close=2026-10-16T10:38
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_3703209884 | ord=3681154797 | entry=0.143 exit=0.14408487 coins=859 sold=859 buy$=122.84 sell$=123.77 pnl=0.69 | open=2026-09-21T17:33 close=2026-09-21T17:58
+  [CLOSED_MANUAL] (TRADE) id=jKre2js4wdE90ILNRZE5 | ord=3744273844 | entry=0.1985 exit=0.2007487 coins=1268.2 sold=1264.8 buy$=251.74 sell$=253.91 pnl=2.34 | open=2026-10-16T10:39 close=2026-10-16T10:54
+=== AVAXUSDT (3) ===
+  [ACTIVE] (HOLDING) id=binance_limit_5872190099 | ord=5872190099 | entry=9.7675 exit=null coins=15.84387 sold=undefined buy$=154.76 sell$=undefined pnl=null | open=2026-10-15T21:44 close=null
+  [PENDING] (TRADE) id=binance_limit_5879754666 | ord=5879754666 | entry=8.5 exit=undefined coins=4.7 sold=undefined buy$=39.95 sell$=undefined pnl=undefined | open=2026-10-18T19:50 close=null
+  [PENDING] (TRADE) id=binance_limit_5879755380 | ord=5879755380 | entry=8.1 exit=undefined coins=4.93 sold=undefined buy$=39.93299999999999 sell$=undefined pnl=undefined | open=2026-10-18T19:50 close=null
+=== AXLUSDT (3) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_1017912690 | ord=1017912690 | entry=0.058 exit=0.0591996 coins=1946.55 sold=1946.55 buy$=112.9 sell$=115.23 pnl=2.11 | open=2026-10-12T19:57 close=2026-10-14T15:57
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_1018808426 | ord=1018808426 | entry=0.058 exit=0.0592 coins=1946.55 sold=1944.6 buy$=112.8999 sell$=115.1203 pnl=2.1053 | open=2026-10-12T19:57 close=2026-10-14T08:24
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_1018868682 | ord=1018868682 | entry=0.0615 exit=0.0588 coins=4058.44 sold=4052.43 buy$=249.59 sell$=238.28 pnl=-11.43 | open=2026-10-14T10:34 close=2026-10-14T15:57
+=== BEATUSDT (1) ===
+  [CLOSED_MANUAL] (undefined) id=OZLKbOWli1tpE5gSrA97 | ord=undefined | entry=0.08674546 exit=0.087198 coins=685.5557054746122 sold=685.5557054746122 buy$=59.468845027019746 sell$=undefined pnl=0.2430569198189693 | open=2026-09-20T16:57 close=2026-09-21T14:08
+=== BLESSUSDT (1) ===
+  [HIT_SL] (TRADE) id=oJ7QmbVLDNjVFwiJerBi | ord=undefined | entry=0.009533 exit=0.008846 coins=14471.01 sold=14469.56 buy$=138.09 sell$=undefined pnl=-10 | open=2026-10-04T12:05 close=null
+=== BNBUSDT (5) ===
+  [CLOSED_MANUAL] (TRADE) id=6w1OHYN8WqDyXghUSAwX | ord=4408113011 | entry=327.08430657 exit=296.58933333 coins=0.274 sold=undefined buy$=89.62 sell$=88.98 pnl=-0.78 | open=2022-11-08T18:10 close=2022-11-09T17:12
+  [CLOSED_MANUAL] (TRADE) id=qw2eFa9wupB0zpgHUQij | ord=4424234833 | entry=284.25 exit=330.32777778 coins=0.14 sold=undefined buy$=39.8 sell$=59.46 pnl=19.59 | open=2022-11-12T08:49 close=2024-03-09T16:26
+  [CLOSED_MANUAL] (TRADE) id=uy9r4khVp9krouQ16QfU | ord=5106182335 | entry=598 exit=595.1 coins=0.016 sold=undefined buy$=9.57 sell$=16.07 pnl=6.48 | open=2024-03-13T21:39 close=2024-03-13T21:49
+  [CLOSED_MANUAL] (TRADE) id=ZWg4wySZrnFgpZ3fJKiw | ord=5112312068 | entry=577.9223301 exit=617.96134454 coins=0.103 sold=undefined buy$=59.53 sell$=73.54 pnl=13.91 | open=2024-03-14T19:00 close=2024-06-05T10:32
+  [CLOSED_MANUAL] (TRADE) id=IG4CWwJrc9l9sW8j3UeQ | ord=12386201292 | entry=606.6 exit=698 coins=0.224 sold=0.222 buy$=135.88 sell$=154.96 pnl=20.03 | open=2026-08-17T15:37 close=2026-08-24T13:53
+=== BTCUSDT (9) ===
+  [CLOSED_MANUAL] (TRADE) id=fRMLV25GJ7y6KhWJF8Ri | ord=14420518467 | entry=19155 exit=19168 coins=0.0021 sold=undefined buy$=39.84 sell$=39.87 pnl=0.03 | open=2022-10-15T14:43 close=2022-10-16T08:23
+  [CLOSED_MANUAL] (TRADE) id=8IZaoXyBAWRb3Pwjhb9j | ord=25371619745 | entry=60161.61616162 exit=62500 coins=0.001 sold=undefined buy$=59.56 sell$=61.25 pnl=1.57 | open=2024-03-05T19:55 close=2024-03-05T20:08
+  [CLOSED_MANUAL] (TRADE) id=qe7y2jfID9bhokd5kCQF | ord=65433744665 | entry=64000 exit=78500 coins=0.01062 sold=0.01062 buy$=679.68 sell$=833.67 pnl=152.53 | open=2026-08-17T17:14 close=2026-08-24T13:56
+  [CLOSED_MANUAL] (TRADE) id=JzqZ344eQxxsn97ofaX9 | ord=66359176704 | entry=78250 exit=78245.00438212 coins=0.01143 sold=0.01141 buy$=894.4 sell$=892.78 pnl=-1.84 | open=2026-09-08T12:03 close=2026-09-09T15:22
+  [CLOSED_MANUAL] (TRADE) id=7ioRgPXSpodxdmTaTUfT | ord=66950261921 | entry=83791.17 exit=84010.01 coins=0.01482 sold=0.01482 buy$=1241.79 sell$=1245.03 pnl=1.09 | open=2026-09-25T14:22 close=2026-09-25T16:19
+  [PENDING] (TRADE) id=EIqZ0GfPRFZ1UqOFfSNx | ord=67540881411 | entry=78500 exit=undefined coins=0.00114 sold=undefined buy$=89.49 sell$=undefined pnl=undefined | open=2026-10-15T21:42 close=null
+  [ACTIVE] (HOLDING) id=binance_limit_67540887156 | ord=67540887156 | entry=81911.5 exit=null coins=0.00364881 sold=undefined buy$=298.88 sell$=undefined pnl=null | open=2026-10-15T21:43 close=null
+  [PENDING] (TRADE) id=binance_limit_67613790416 | ord=67613790416 | entry=76750 exit=undefined coins=0.00117 sold=undefined buy$=89.7975 sell$=undefined pnl=undefined | open=2026-10-18T19:47 close=null
+  [PENDING] (TRADE) id=binance_limit_67613804398 | ord=67613804398 | entry=75000 exit=undefined coins=0.0012 sold=undefined buy$=90 sell$=undefined pnl=undefined | open=2026-10-18T19:47 close=null
+=== CETUSUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=T4pq6nYTg36eaQIJr2Va | ord=714895646 | entry=0.02684 exit=0.0263 coins=3725.7 sold=3721.9 buy$=99.9978 sell$=97.886 pnl=-2.2097 | open=2026-09-21T06:34 close=2026-09-21T17:56
+=== CFGUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=LIw54h3NAOavPqUOqMNR | ord=98838076 | entry=0.119 exit=0.13225 coins=672.2 sold=672.2 buy$=79.99 sell$=88.9 pnl=8.77 | open=2026-09-18T12:53 close=2026-09-21T19:25
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_99059142 | ord=99059142 | entry=0.119 exit=0.1287 coins=336.1 sold=336.1 buy$=39.9959 sell$=43.2561 pnl=3.2346 | open=2026-09-18T12:53 close=2026-09-19T08:14
+=== CFXUSDT (9) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_722168594 | ord=722168594 | entry=0.303 exit=0.0625 coins=1 sold=1022 buy$=0.3 sell$=0.06 pnl=-0.24 | open=2024-03-06T17:59 close=2024-03-06T17:59
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2089501326 | ord=2089501326 | entry=0.05354 exit=0.0625 coins=933 sold=933 buy$=49.95 sell$=58.31 pnl=8.25 | open=2026-09-21T07:16 close=2026-10-10T14:50
+  [CLOSED_MANUAL] (TRADE) id=cfx_master_unified | ord=undefined | entry=0.0537 exit=0.06492 coins=4094 sold=4091 buy$=219.84 sell$=265.58 pnl=45.25 | open=2026-09-21T12:12 close=2026-09-21T12:12
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_cfx_master_unified | ord=cfx_master_unified | entry=0.0537 exit=0.0649 coins=4094 sold=4094 buy$=219.84 sell$=265.58 pnl=45.25 | open=2026-09-21T14:13 close=2026-09-21T14:13
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2090308638 | ord=2090308638 | entry=0.05519 exit=0.06456851 coins=905 sold=905 buy$=49.95 sell$=58.43 pnl=8.38 | open=2026-09-23T05:49 close=2026-10-11T06:45
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2098533796 | ord=2098533796 | entry=0.05519 exit=0.0645 coins=720 sold=720 buy$=39.7368 sell$=46.44 pnl=6.6568 | open=2026-09-23T05:49 close=2026-10-10T15:13
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2089501658 | ord=2089501658 | entry=0.052 exit=0.0669232 coins=961 sold=961 buy$=49.97 sell$=64.31 pnl=14.23 | open=2026-09-23T14:13 close=2026-10-11T11:46
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2090696044 | ord=2090696044 | entry=0.05174 exit=0.06541026 coins=386 sold=386 buy$=19.97 sell$=25.25 pnl=5.24 | open=2026-09-23T19:55 close=2026-10-11T12:09
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2091361694 | ord=2091361694 | entry=0.055 exit=0.06541594 coins=909 sold=906 buy$=49.99 sell$=59.27 pnl=9.34 | open=2026-09-25T14:03 close=2026-10-11T12:13
+=== CHIPUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_294361872 | ord=294361872 | entry=0.04793 exit=0.04833 coins=2086 sold=2086 buy$=99.98 sell$=100.82 pnl=0.63 | open=2026-10-04T19:25 close=2026-10-05T14:36
+  [CLOSED_MANUAL] (TRADE) id=dIn9m8cGMk1LG8l9I5K8 | ord=294402243 | entry=0.04907 exit=0.04833 coins=814 sold=811 buy$=39.94 sell$=39.2 pnl=-0.67 | open=2026-10-04T20:04 close=2026-10-05T14:36
+=== CTSIUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=OkLa5WWDMap8cUWBHoi1 | ord=1201471431 | entry=0.035 exit=0.0315 coins=3352 sold=3348 buy$=117.32 sell$=105.462 pnl=-11.9635 | open=2026-10-11T12:16 close=2026-10-14T10:21
+=== DIAUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_859449056 | ord=859449056 | entry=0.1833 exit=0.16 coins=763.7 sold=762.9 buy$=139.99 sell$=122.06 pnl=-18.04 | open=2026-10-05T21:02 close=2026-10-07T09:48
+  [CLOSED_MANUAL] (TRADE) id=WTB7FiJKUEO7tUbRQD23 | ord=859449056 | entry=0.1833 exit=0.16 coins=763.7 sold=762.9 buy$=139.99 sell$=122.06 pnl=-18.04 | open=2026-10-05T21:02 close=2026-10-07T09:48
+=== DUSKUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=J1jZvWiV9CDYdf3UWsuy | ord=319225480 | entry=0.1275 exit=0.1275 coins=235 sold=undefined buy$=29.96 sell$=29.84 pnl=-0.21 | open=2022-10-28T13:29 close=2022-11-02T03:39
+  [CLOSED_MANUAL] (TRADE) id=0kLfU2eKCNB16u1Fc43f | ord=1278878343 | entry=0.095 exit=0.0856 coins=1473 sold=1471 buy$=139.94 sell$=125.92 pnl=-14.09 | open=2026-10-01T08:19 close=2026-10-02T17:40
+=== ETHUSDT (9) ===
+  [CLOSED_MANUAL] (TRADE) id=TqSHMm9akZhLlr12o2be | ord=11586002949 | entry=1382.86449074 exit=1153.78 coins=0.0432 sold=undefined buy$=59.74 sell$=49.84 pnl=-10.11 | open=2022-11-08T18:19 close=2022-11-09T18:38
+  [CLOSED_MANUAL] (TRADE) id=qY7ZZHMQd5fzWr5yfgZJ | ord=49041170830 | entry=1912 exit=2500 coins=0.1778 sold=0.1778 buy$=339.95 sell$=444.5 pnl=103.79 | open=2026-08-17T15:58 close=2026-08-24T14:01
+  [CLOSED_MANUAL] (TRADE) id=uZKH6Hy42Z0ZUZiIYIZj | ord=49706540911 | entry=2450 exit=2453.14 coins=0.0306 sold=0.0305 buy$=74.97 sell$=74.8208 pnl=-0.1959 | open=2026-09-08T13:39 close=2026-09-09T22:30
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_49619514369 | ord=49619514369 | entry=2450 exit=2453.5370915 coins=0.0306 sold=0.0306 buy$=74.97 sell$=75.08 pnl=-0.03 | open=2026-09-14T20:34 close=2026-09-20T06:52
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_49823089297 | ord=49813652141 | entry=2500 exit=2501 coins=0.04 sold=0.04 buy$=100 sell$=100.04 pnl=-0.16 | open=2026-09-15T03:10 close=2026-09-15T06:02
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_49813605556 | ord=49813605556 | entry=2597.73 exit=2574.65 coins=0.0769 sold=0.0769 buy$=199.77 sell$=197.99 pnl=-2.15 | open=2026-09-16T22:01 close=2026-09-20T06:52
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_49878136254 | ord=49878136254 | entry=2400 exit=2574.65 coins=0.0208 sold=0.0206 buy$=49.92 sell$=53.04 pnl=3.5 | open=2026-09-16T22:01 close=2026-09-20T06:52
+  [PENDING] (TRADE) id=1Xkb5VbXji0M2qXQhO8R | ord=50555664129 | entry=2260 exit=undefined coins=0.0331 sold=undefined buy$=74.806 sell$=undefined pnl=undefined | open=2026-10-15T21:41 close=null
+  [ACTIVE] (HOLDING) id=binance_holding_ETHUSDT | ord=undefined | entry=2467.35 exit=undefined coins=0.18767246 sold=undefined buy$=463.05 sell$=undefined pnl=undefined | open=2026-10-21T12:01 close=null
+=== FARTCOINUSDT (1) ===
+  [CLOSED_MANUAL] (undefined) id=TWDwWoUMFtfwwXHcU2SR | ord=undefined | entry=0.1519 exit=0.164076 coins=592.9388499999994 sold=592.9388499999994 buy$=90.06741131499992 sell$=undefined pnl=7.115266199999983 | open=2026-09-18T12:15 close=2026-09-20T11:06
+=== FETUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_3684242416 | ord=3685393912 | entry=0.24 exit=0.2233 coins=208.3 sold=208.3 buy$=49.99 sell$=46.51 pnl=-3.56 | open=2026-09-25T11:56 close=2026-09-29T16:09
+  [CLOSED_MANUAL] (TRADE) id=jNYpfmFBSSfQTGEtJgBf | ord=3699358284 | entry=0.2562 exit=0.25 coins=156.1 sold=155.7 buy$=39.99 sell$=38.92 pnl=-1.03 | open=2026-10-04T19:26 close=2026-10-05T14:47
+=== FILUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=WJSr4O7z6neWdN4uYcHk | ord=5252477237 | entry=0.86 exit=0.8406 coins=122.5 sold=122.37 buy$=105.35 sell$=102.8642 pnl=-2.5886 | open=2026-09-07T15:29 close=2026-09-08T13:34
+=== FLOKIUSDT (6) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_5544674100 | ord=5544674100 | entry=0.0001815 exit=0.00017485 coins=513829 sold=513829 buy$=93.26 sell$=89.85 pnl=-3.6 | open=2025-01-17T19:06 close=2026-09-23T11:34
+  [CLOSED_MANUAL] (TRADE) id=cmPrkfETvs8eDpNYrojK | ord=5544674100 | entry=0.0001815 exit=0.00017485 coins=513829 sold=513829 buy$=93.26 sell$=89.85 pnl=-3.6 | open=2025-01-17T19:06 close=2026-09-23T11:34
+  [CLOSED_MANUAL] (TRADE) id=TXOmto0B26cChrUP3NW3 | ord=10622867497 | entry=0.00002752 exit=0.0000293 coins=6104651 sold=6104651 buy$=168 sell$=178.87 pnl=10.52 | open=2026-09-21T12:28 close=2026-09-23T11:34
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_10625590894 | ord=10625590894 | entry=0.0000303 exit=0.00002755 coins=3078980 sold=3078980 buy$=93.2931 sell$=84.8259 pnl=-8.552 | open=2026-09-22T21:16 close=2026-09-23T14:20
+  [CLOSED_MANUAL] (TRADE) id=gTp3OMzT326f4PBvWteK | ord=10625610363 | entry=0.0000303 exit=0.0000277 coins=3067321 sold=3049273 buy$=92.9398 sell$=84.4649 pnl=-8.5594 | open=2026-09-22T21:16 close=2026-09-23T14:25
+  [CLOSED_MANUAL] (TRADE) id=sQTVgLtpiJhN65ySPak4 | ord=10624815911 | entry=0.0000303 exit=0.00002844 coins=11942550 sold=11923988 buy$=361.86 sell$=339.11 pnl=-22.89 | open=2026-09-22T21:16 close=2026-09-23T14:25
+=== FLOWUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=cjxng6hxyJ68qWdYFxK0 | ord=771923 | entry=0.751 exit=0.771 coins=132.8 sold=undefined buy$=99.73 sell$=102.39 pnl=2.46 | open=2026-09-24T11:40 close=2026-09-25T01:33
+  [CLOSED_MANUAL] (TRADE) id=3A8LcQ11bUrrMM4scd9G | ord=984635029 | entry=0.033 exit=0.0331 coins=4078.18 sold=4078.18 buy$=134.58 sell$=134.99 pnl=0.21 | open=2026-09-27T08:25 close=2026-09-27T09:39
+=== HOMEUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=1PvjgfDvGL7cwV0w5ET6 | ord=299107730 | entry=0.0062 exit=0.00672 coins=16129 sold=16129 buy$=100 sell$=108.39 pnl=8.23 | open=2026-09-19T08:15 close=2026-09-20T06:32
+=== IBMBUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17733149 | ord=17733149 | entry=238.17112038 exit=238.78 coins=0.42 sold=0.42 buy$=100.0319 sell$=100.2876 pnl=0.1931 | open=2026-09-09T17:49 close=2026-09-09T22:31
+  [CLOSED_MANUAL] (TRADE) id=ka627WpGvhYxoRptblLJ | ord=17671861 | entry=238.17112038 exit=238.72156138 coins=0.839 sold=0.839 buy$=199.83 sell$=200.29 pnl=0.15 | open=2026-09-09T17:49 close=2026-09-09T22:34
+=== INITUSDT (6) ===
+  [CLOSED_MANUAL] (TRADE) id=0miUsMXov8emntNeE7Xu | ord=554730189 | entry=0.058 exit=0.058 coins=2162.5 sold=2160.3 buy$=125.425 sell$=125.2974 pnl=-0.2529 | open=2026-08-30T09:46 close=2026-09-01T23:22
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_553530731 | ord=553530731 | entry=0.058 exit=0.05803221 coins=2162.5 sold=2162.5 buy$=125.42 sell$=125.49 pnl=-0.18 | open=2026-08-30T09:46 close=2026-09-23T13:10
+  [CLOSED_MANUAL] (TRADE) id=3RIAYfxvP9UiqAEueLj8 | ord=128941 | entry=0.428 exit=0.442 coins=233.6 sold=undefined buy$=99.98 sell$=103.25 pnl=3.24 | open=2026-09-14T01:40 close=2026-09-14T15:33
+  [CLOSED_MANUAL] (TRADE) id=n70dV2IkdOxkUXufhGty | ord=128941 | entry=0.428 exit=0.442 coins=233.6 sold=undefined buy$=99.98 sell$=103.25 pnl=3.24 | open=2026-09-14T01:40 close=2026-09-14T15:33
+  [CLOSED_MANUAL] (TRADE) id=in3pbhzWUTrkubEgSs1K | ord=562355073 | entry=0.08987 exit=0.08965985 coins=1305 sold=1303.6 buy$=117.2803 sell$=116.8806 pnl=-0.5163 | open=2026-09-23T06:35 close=2026-09-23T13:10
+  [CLOSED_MANUAL] (TRADE) id=qN6ucdHt5qpfUJ2oACey | ord=562256485 | entry=0.08987 exit=0.08965985 coins=1305 sold=1301.4 buy$=117.28 sell$=116.68 pnl=-0.51 | open=2026-09-23T06:35 close=2026-09-23T13:10
+=== JTOUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=rIFxnlyEe4oA8p7qI8XW | ord=438820497 | entry=2.98143103 exit=3.4 coins=14.5 sold=undefined buy$=43.23 sell$=49.3 pnl=5.98 | open=2024-03-14T12:07 close=2024-03-16T02:04
+  [CLOSED_MANUAL] (TRADE) id=pU87cLFsiZVpDmhDvtdz | ord=2345035558 | entry=0.48 exit=0.4765 coins=291.6 sold=291.3 buy$=139.968 sell$=138.8045 pnl=-1.3024 | open=2026-09-20T15:34 close=2026-09-23T14:32
+=== LTCUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=8QPgVkoR0LsZkF0ab6dN | ord=7490029219 | entry=64.18 exit=65.45 coins=3.904 sold=3.9 buy$=250.5587 sell$=255.255 pnl=4.441 | open=2026-10-11T18:49 close=2026-10-12T04:39
+=== MEGAUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_226550987 | ord=226550987 | entry=0.04803832 exit=0.042 coins=2728.1 sold=2725.3 buy$=131.05 sell$=114.46 pnl=-16.7 | open=2026-10-11T16:32 close=2026-10-13T00:52
+=== MMTUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=qJdoBmpD5gkxjfUoxmLN | ord=352789309 | entry=0.1623 exit=0.1533 coins=616.1 sold=616.1 buy$=99.99 sell$=94.45 pnl=-5.71 | open=2026-09-19T16:14 close=2026-09-20T08:53
+=== NIGHTUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_179908249 | ord=179908249 | entry=0.02346051 exit=0.02451 coins=2130 sold=2130 buy$=49.9709 sell$=52.2063 pnl=2.2046 | open=2026-09-18T12:30 close=2026-09-19T08:13
+  [CLOSED_MANUAL] (TRADE) id=j2Xd5NR8M2EUJftuZCHp | ord=179419958 | entry=0.02346051 exit=0.02426744 coins=4260 sold=4260 buy$=99.94 sell$=103.38 pnl=3.27 | open=2026-09-18T12:30 close=2026-09-20T08:53
+=== NILUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=XFIduAkF2n9RE5gbZh18 | ord=446488026 | entry=0.04886 exit=0.04964799 coins=2046.6 sold=2046.6 buy$=100 sell$=101.61 pnl=1.46 | open=2026-09-19T15:58 close=2026-09-20T08:23
+=== NOMUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=BOmmNPHxzu88wuTAOhhc | ord=142076130 | entry=0.00269 exit=0.00235 coins=74349 sold=74274 buy$=200 sell$=174.54 pnl=-25.63 | open=2026-10-04T12:33 close=2026-10-06T16:37
+=== ONDOUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_1130777168 | ord=1131737115 | entry=0.5082 exit=0.5082 coins=464.3 sold=463.8 buy$=235.9573 sell$=235.7032 pnl=-0.4898 | open=2026-10-11T19:29 close=2026-10-12T08:17
+=== OPNUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=S0frXnc9QcGLQKlx6zpu | ord=162075384 | entry=0.05944029 exit=0.0586 coins=2352.9 sold=2350.5 buy$=139.857 sell$=137.7393 pnl=-2.2555 | open=2026-10-05T21:03 close=2026-10-07T13:49
+=== ORCAUSDT (5) ===
+  [CLOSED_MANUAL] (TRADE) id=nrbvE2npTPFzRbO6aixb | ord=89400368 | entry=4.04 exit=4.04974292 coins=82.04 sold=81.958 buy$=331.44 sell$=331.91 pnl=0.14 | open=2025-01-18T13:01 close=2026-09-08T10:38
+  [CLOSED_MANUAL] (TRADE) id=ITjse3aSINrBYNtS9sOU | ord=89467392 | entry=4 exit=4.16980715 coins=82.89 sold=undefined buy$=331.56 sell$=345.3 pnl=13.07 | open=2025-01-18T13:51 close=2025-01-18T16:36
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_91084224 | ord=91084224 | entry=4.28814457 exit=4.38938707 coins=64.95 sold=64.95 buy$=278.51 sell$=285.09 pnl=6.01 | open=2025-01-18T23:32 close=2026-09-08T10:38
+  [CLOSED_MANUAL] (TRADE) id=Srky99WobHqpv4l9m72l | ord=500098516 | entry=1.495 exit=1.403 coins=114.07 sold=114.07 buy$=170.5346 sell$=160.0402 pnl=-10.6545 | open=2026-09-08T00:15 close=2026-09-08T10:38
+  [CLOSED_MANUAL] (TRADE) id=ae4E9dRTQJ2BDXxmg1vi | ord=499919904 | entry=1.495 exit=1.39486896 coins=304.49 sold=303.95 buy$=455.21 sell$=423.97 pnl=-31.31 | open=2026-09-08T00:15 close=2026-09-08T12:24
+=== PLUMEUSDT (3) ===
+  [CLOSED_MANUAL] (TRADE) id=gBGFyQ6q7EtLUIXESqDq | ord=641882 | entry=0.143 exit=0.146 coins=697.3 sold=undefined buy$=99.71 sell$=101.81 pnl=1.9 | open=2026-09-23T07:53 close=2026-09-23T21:46
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_332965195 | ord=332965195 | entry=0.01953 exit=0.018 coins=3962 sold=3962 buy$=77.3779 sell$=71.316 pnl=-6.1332 | open=2026-10-01T09:35 close=2026-10-02T17:38
+  [CLOSED_MANUAL] (TRADE) id=c1LGv11cWdCMi2JM3sUg | ord=332962890 | entry=0.01953 exit=0.018015 coins=7932 sold=7924 buy$=154.91 sell$=142.75 pnl=-12.3 | open=2026-10-01T09:35 close=2026-10-02T17:42
+=== PUMPUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=z1ZnwFKFmxFCrqMyd5qh | ord=951256406 | entry=0.006336 exit=0.006122 coins=110127 sold=110016 buy$=697.76 sell$=673.52 pnl=-24.91 | open=2026-10-06T10:01 close=2026-10-06T17:11
+=== SAGAUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2135938663 | ord=2135938663 | entry=0.02525 exit=0.02678 coins=4475.2 sold=4475.2 buy$=113 sell$=119.85 pnl=6.68 | open=2026-09-19T08:22 close=2026-09-19T15:06
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_2135942359 | ord=2135942359 | entry=0.02525 exit=0.0275 coins=2237.6 sold=2237.6 buy$=56.4994 sell$=61.534 pnl=4.9985 | open=2026-09-19T08:22 close=2026-09-19T09:52
+=== SCRUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=TI1RnPSIJmylg6lCUj7v | ord=441977909 | entry=0.02958 exit=0.027 coins=3380.6 sold=3377.2 buy$=100 sell$=91.18 pnl=-8.9 | open=2026-10-05T04:23 close=2026-10-06T01:52
+=== SHELLUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=mEoOWoZ7YUv4fhU078YL | ord=321689209 | entry=0.0235 exit=0.02712838 coins=2978.7 sold=2978.7 buy$=70 sell$=80.81 pnl=10.66 | open=2026-09-20T10:52 close=2026-09-23T14:21
+=== SOLUSDT (21) ===
+  [CLOSED_MANUAL] (TRADE) id=wlm6dIQuh2W22Hf7ga9v | ord=3313908325 | entry=30 exit=29.86 coins=0.83 sold=undefined buy$=24.9 sell$=24.78 pnl=-0.23 | open=2022-10-14T21:34 close=2022-10-16T13:41
+  [CLOSED_MANUAL] (TRADE) id=B5oB1HIbroPHLfNLP2ja | ord=3361910531 | entry=34 exit=31.11 coins=0.7 sold=undefined buy$=23.8 sell$=21.78 pnl=-2.1 | open=2022-11-06T19:36 close=2022-11-07T14:45
+  [CLOSED_MANUAL] (TRADE) id=AugT8JCnY88VutDraKXb | ord=9410027082 | entry=189.96 exit=190 coins=1.457 sold=undefined buy$=276.77 sell$=276.45 pnl=-0.87 | open=2025-01-14T09:49 close=2025-01-14T14:38
+  [CLOSED_MANUAL] (TRADE) id=o7AaBQUg0DPPlfy49Dem | ord=9472582355 | entry=216.65 exit=226.98207171 coins=0.502 sold=0.502 buy$=108.76 sell$=113.94 pnl=4.96 | open=2025-01-17T18:57 close=2026-08-24T13:48
+  [CLOSED_MANUAL] (TRADE) id=IfEp1ZWi3S0nWPzfFpRW | ord=9497485873 | entry=243.66 exit=244 coins=1.359 sold=undefined buy$=331.13 sell$=331.6 pnl=-0.15 | open=2025-01-18T10:59 close=2025-01-18T12:32
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_9472582355 | ord=9472582355 | entry=216.65 exit=226.98207171 coins=0.502 sold=0.502 buy$=108.76 sell$=113.94 pnl=4.96 | open=2026-08-17T15:58 close=2026-08-24T13:48
+  [CLOSED_MANUAL] (TRADE) id=GaCqGJKr1puyvc8n28En | ord=17599734442 | entry=76.1 exit=95.00708955 coins=2.68 sold=2.68 buy$=203.95 sell$=254.62 pnl=50.28 | open=2026-09-09T09:10 close=2026-09-09T12:14
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17829214046 | ord=17829214046 | entry=104.7 exit=113.52 coins=1.117 sold=1.117 buy$=116.9499 sell$=126.8018 pnl=9.7773 | open=2026-09-14T20:32 close=2026-09-18T22:17
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17829254762 | ord=17829254762 | entry=104.7 exit=113.23 coins=0.167 sold=0.167 buy$=17.4849 sell$=18.9094 pnl=1.4134 | open=2026-09-14T20:32 close=2026-09-18T22:30
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17835442995 | ord=17800857964 | entry=104.7 exit=100.6 coins=2.101 sold=2.101 buy$=219.97 sell$=211.36 pnl=-8.99 | open=2026-09-14T20:32 close=2026-09-17T12:10
+  [CLOSED_MANUAL] (TRADE) id=sol_holding_sep15 | ord=17817209817 | entry=100.6 exit=100.6 coins=2.671 sold=2.6683 buy$=268.7 sell$=268.43 pnl=-0.54 | open=2026-09-17T09:19 close=2026-09-17T12:10
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17817817787 | ord=17817817787 | entry=101 exit=108.28379209 coins=2.376 sold=2.376 buy$=239.98 sell$=257.28 pnl=16.81 | open=2026-09-17T12:23 close=2026-10-14T08:59
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17835448119 | ord=17835448119 | entry=101 exit=108.25 coins=1.083 sold=1.083 buy$=109.383 sell$=117.2348 pnl=7.7345 | open=2026-09-17T12:23 close=2026-09-20T06:46
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17835472536 | ord=17835472536 | entry=101 exit=108.34 coins=1.027 sold=1.021 buy$=103.727 sell$=110.6151 pnl=6.7775 | open=2026-09-17T12:23 close=2026-09-20T06:55
+  [CLOSED_MANUAL] (TRADE) id=iaishynUvKcWb53OHTIo | ord=17817209817 | entry=100.6 exit=109.18837514 coins=2.671 sold=2.671 buy$=268.7 sell$=291.64 pnl=22.42 | open=2026-09-17T12:23 close=2026-09-20T06:44
+  [CLOSED_MANUAL] (TRADE) id=66Zq6UneFi7WuIIkqk6w | ord=17807177712 | entry=101 exit=112.29402761104443 coins=1.666 sold=1.666 buy$=168.266 sell$=undefined pnl=18.495447030000012 | open=2026-09-25T19:48 close=2026-09-29T12:49
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17945515636 | ord=17945515636 | entry=107 exit=107.04 coins=1.401 sold=1.401 buy$=149.91 sell$=149.96 pnl=-0.21 | open=2026-10-08T17:21 close=2026-10-14T08:59
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_17945516162 | ord=17945516162 | entry=103 exit=107.04 coins=1.456 sold=1.456 buy$=149.97 sell$=155.85 pnl=5.58 | open=2026-10-13T00:51 close=2026-10-14T08:59
+  [CLOSED_MANUAL] (TRADE) id=trade_closed_sol_17983138004 | ord=17983138004 | entry=107.88 exit=107.04 coins=11.977 sold=9.1 buy$=1292.08 sell$=974.06 pnl=-9.6 | open=2026-10-14T08:26 close=2026-10-14T08:59
+  [PENDING] (TRADE) id=binance_limit_18010848990 | ord=18010848990 | entry=97 exit=undefined coins=1.134 sold=undefined buy$=110 sell$=undefined pnl=undefined | open=2026-10-18T19:48 close=null
+  [ACTIVE] (HOLDING) id=binance_holding_SOLUSDT | ord=undefined | entry=107.81979984603541 exit=undefined coins=3.862547 sold=undefined buy$=416.45904443590456 sell$=undefined pnl=undefined | open=2026-10-21T16:46 close=null
+=== STGUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=gIpTFc9rCmjwLC0Fo5uF | ord=1190569429 | entry=0.171 exit=0.15 coins=584.7 sold=584.7 buy$=99.98 sell$=87.7 pnl=-12.42 | open=2026-09-19T09:34 close=2026-09-19T13:21
+=== SUIUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_holding_SUIUSDT | ord=9039108427 | entry=1.087 exit=1.0662 coins=145.9 sold=145.7 buy$=158.59 sell$=155.35 pnl=-3.34 | open=2026-10-12T16:40 close=2026-10-12T18:51
+=== SUPERUSDT (1) ===
+  [ACTIVE] (TRADE) id=binance_holding_SUPERUSDT | ord=undefined | entry=0.2 exit=undefined coins=563 sold=undefined buy$=112.49 sell$=undefined pnl=undefined | open=2026-10-21T08:40 close=null
+=== SYRUPUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=2jXkNLk09b56Y8vKPGg8 | ord=634749085 | entry=0.26 exit=0.235 coins=467.4 sold=466.9 buy$=121.524 sell$=109.7215 pnl=-11.9122 | open=2026-10-13T08:36 close=2026-10-13T23:07
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_634393145 | ord=634393145 | entry=0.26 exit=0.235 coins=467.4 sold=466.9 buy$=121.52 sell$=109.72 pnl=-11.9 | open=2026-10-13T08:36 close=2026-10-13T23:07
+=== TAOUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=63b1zOrSqDDQVIdDx1Qc | ord=2577650785 | entry=268 exit=256.8 coins=0.5505 sold=0.5505 buy$=147.53 sell$=141.37 pnl=-6.38 | open=2026-09-19T10:58 close=2026-09-20T02:46
+=== TIAUSDT (2) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_holding_TIAUSDT | ord=3502084255 | entry=0.6077 exit=0.6088 coins=411.22 sold=410.8 buy$=249.9 sell$=250.08 pnl=-0.07 | open=2026-10-19T15:51 close=2026-10-19T16:23
+  [CLOSED_MANUAL] (TRADE) id=exQ2qptAjIRvhpipw1L4 | ord=3502154039 | entry=0.605 exit=0.6265 coins=512.16 sold=511.65 buy$=309.8568 sell$=320.54886 pnl=10.37 | open=2026-10-19T17:02 close=2026-10-20T06:19
+=== TUTUSDT (1) ===
+  [CLOSED_MANUAL] (TRADE) id=0deTf9AdpHovfZmnhbYc | ord=700791606 | entry=0.02568 exit=0.02364 coins=3733 sold=3729 buy$=95.8634 sell$=88.1536 pnl=-7.798 | open=2026-09-23T06:35 close=2026-09-23T14:29
+=== ZECUSDT (3) ===
+  [CLOSED_MANUAL] (TRADE) id=binance_closed_6136483131 | ord=6136483131 | entry=1215 exit=1304.7 coins=0.182 sold=0.181 buy$=221.13 sell$=236.1507 pnl=14.7845 | open=2026-09-16T12:24 close=2026-09-16T18:07
+  [CLOSED_MANUAL] (TRADE) id=l7aFS1rvNfS19ABY9fyH | ord=6136385687 | entry=1215 exit=1306.12087912 coins=0.182 sold=0.182 buy$=221.13 sell$=237.71 pnl=16.13 | open=2026-09-16T12:24 close=2026-09-23T14:13
+  [CLOSED_MANUAL] (TRADE) id=5MQwymOcygABQaFCgm60 | ord=6276779725 | entry=1630 exit=1563.3 coins=0.176 sold=0.174 buy$=286.88 sell$=272.01 pnl=-12.16 | open=2026-09-23T13:58 close=2026-09-23T14:13
+=== ZKPUSDT (3) ===
+  [CLOSED_MANUAL] (HOLDING) id=uP9gGqYfz9BjXRdUKWGe | ord=undefined | entry=0.04694 exit=undefined coins=4686.7 sold=undefined buy$=219.99049000000002 sell$=undefined pnl=0 | open=2026-10-16T13:18 close=2026-10-21T17:45
+  [PENDING] (TRADE) id=binance_limit_141498160 | ord=141498160 | entry=0.038123783052138385 exit=undefined coins=1160.8132999999993 sold=undefined buy$=44.2545944132368 sell$=undefined pnl=undefined | open=2026-10-18T19:45 close=null
+  [ACTIVE] (HOLDING) id=binance_holding_ZKPUSDT | ord=undefined | entry=0.046939315509847014 exit=undefined coins=4682.0133 sold=undefined buy$=219.77049950999998 sell$=undefined pnl=undefined | open=2026-10-21T18:01 close=null

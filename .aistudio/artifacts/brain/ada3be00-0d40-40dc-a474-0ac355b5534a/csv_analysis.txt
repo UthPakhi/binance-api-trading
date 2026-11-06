@@ -1,0 +1,334 @@
+Total CSV rows: 315
+Total distinct pairs in CSV: 49
+
+=== 0GUSDT (6 fills) ===
+  Summary: Bought 1127.920000 ($151.42) | Sold 515.920000 ($174.78) | Net Qty Remaining: 612.000000
+    Order #223685513 | 2026-09-29 15:12:40 | BUY  | Qty: 1127.920000 @ Avg $0.134249 (Total: $151.4225) | Fee: 0.00014868 BNB (3 fills)
+    Order #223686660 | 2026-09-29 17:03:40 | SELL | Qty: 257.960000 @ Avg $0.330000 (Total: $85.1268) | Fee: 0.00008327 BNB (1 fills)
+    Order #224220724 | 2026-09-30 10:20:03 | SELL | Qty: 128.980000 @ Avg $0.360000 (Total: $46.4328) | Fee: 0.04643280 USDT (1 fills)
+    Order #227840423 | 2026-09-30 16:10:32 | SELL | Qty: 128.980000 @ Avg $0.335100 (Total: $43.2212) | Fee: 0.04322120 USDT (1 fills)
+
+=== ADAUSDT (21 fills) ===
+  Summary: Bought 3049.300000 ($741.52) | Sold 3046.100000 ($719.12) | Net Qty Remaining: 3.200000
+    Order #8780622310 | 2026-09-08 22:22:25 | BUY  | Qty: 1317.100000 @ Avg $0.225000 (Total: $296.3475) | Fee: 1.31710000 ADA (1 fills)
+    Order #8780843743 | 2026-09-09 20:07:13 | SELL | Qty: 1315.700000 @ Avg $0.215800 (Total: $283.9281) | Fee: 0.28392806 USDT (1 fills)
+    Order #8820645995 | 2026-10-02 10:00:45 | BUY  | Qty: 1732.200000 @ Avg $0.257000 (Total: $445.1754) | Fee: 1.73220000 ADA (18 fills)
+    Order #8821649686 | 2026-10-02 22:20:44 | SELL | Qty: 1730.400000 @ Avg $0.251500 (Total: $435.1956) | Fee: 0.43519560 USDT (1 fills)
+
+=== ALLOUSDT (7 fills) ===
+  Summary: Bought 426.700000 ($119.99) | Sold 426.200000 ($113.03) | Net Qty Remaining: 0.500000
+    Order #446150809 | 2026-09-21 22:18:16 | BUY  | Qty: 426.700000 @ Avg $0.281200 (Total: $119.9880) | Fee: 0.42670000 ALLO (6 fills)
+    Order #446268813 | 2026-09-22 00:27:02 | SELL | Qty: 426.200000 @ Avg $0.265200 (Total: $113.0282) | Fee: 0.11302824 USDT (1 fills)
+
+=== ARBUSDT (16 fills) ===
+  Summary: Bought 5028.900000 ($887.06) | Sold 5025.500000 ($887.86) | Net Qty Remaining: 3.400000
+    Order #3676410546 | 2026-09-11 21:29:11 | BUY  | Qty: 861.100000 @ Avg $0.144000 (Total: $123.9984) | Fee: 0.00012758 BNB (1 fills)
+    Order #3676451497 | 2026-09-11 22:42:06 | BUY  | Qty: 857.600000 @ Avg $0.144000 (Total: $123.4944) | Fee: 0.00012737 BNB (1 fills)
+    Order #3680976235 | 2026-09-15 20:05:25 | SELL | Qty: 859.300000 @ Avg $0.140000 (Total: $120.3020) | Fee: 0.05731186 BNB (3 fills)
+    Order #3681154797 | 2026-09-15 23:24:14 | BUY  | Qty: 859.000000 @ Avg $0.143000 (Total: $122.8370) | Fee: 0.85900000 ARB (1 fills)
+    Order #3682137310 | 2026-09-15 23:53:01 | SELL | Qty: 1717.500000 @ Avg $0.144000 (Total: $247.3200) | Fee: 0.24732000 USDT (1 fills)
+    Order #3701703777 | 2026-09-21 22:33:49 | BUY  | Qty: 1183.000000 @ Avg $0.224000 (Total: $264.9920) | Fee: 1.18300000 ARB (1 fills)
+    Order #3703209884 | 2026-09-21 22:58:00 | SELL | Qty: 1181.800000 @ Avg $0.225000 (Total: $265.9050) | Fee: 0.26590500 USDT (2 fills)
+    Order #3744273844 | 2026-10-16 15:01:07 | BUY  | Qty: 1268.200000 @ Avg $0.198500 (Total: $251.7377) | Fee: 1.23490679 BNB (2 fills)
+    Order #3744405660 | 2026-10-16 15:38:56 | SELL | Qty: 633.400000 @ Avg $0.201500 (Total: $127.6301) | Fee: 0.12763010 USDT (1 fills)
+    Order #3744429476 | 2026-10-16 15:53:55 | SELL | Qty: 633.500000 @ Avg $0.200000 (Total: $126.7000) | Fee: 0.12670000 USDT (3 fills)
+
+=== AVAXUSDT (2 fills) ===
+  Summary: Bought 9.720000 ($94.91) | Sold 0.000000 ($0.00) | Net Qty Remaining: 9.720000
+    Order #5847465164 | 2026-10-08 20:23:11 | BUY  | Qty: 4.000000 @ Avg $10.000000 (Total: $40.0000) | Fee: 0.00004083 BNB (1 fills)
+    Order #5867107329 | 2026-10-15 07:23:10 | BUY  | Qty: 5.720000 @ Avg $9.600000 (Total: $54.9120) | Fee: 0.00005744 BNB (1 fills)
+
+=== AXLUSDT (8 fills) ===
+  Summary: Bought 6004.990000 ($362.49) | Sold 5998.980000 ($353.52) | Net Qty Remaining: 6.010000
+    Order #1017912690 | 2026-10-13 00:57:05 | BUY  | Qty: 1946.550000 @ Avg $0.058000 (Total: $112.8999) | Fee: 1.94655000 AXL (1 fills)
+    Order #1018808426 | 2026-10-14 13:24:45 | SELL | Qty: 1944.600000 @ Avg $0.059200 (Total: $115.1203) | Fee: 0.11512032 USDT (1 fills)
+    Order #1018868682 | 2026-10-14 15:34:00 | BUY  | Qty: 4058.440000 @ Avg $0.061500 (Total: $249.5941) | Fee: 4.05844000 AXL (4 fills)
+    Order #1019050377 | 2026-10-14 20:57:20 | SELL | Qty: 4054.380000 @ Avg $0.058800 (Total: $238.3975) | Fee: 0.23839754 USDT (2 fills)
+
+=== BNBUSDT (4 fills) ===
+  Summary: Bought 0.224000 ($135.88) | Sold 0.222000 ($154.96) | Net Qty Remaining: 0.002000
+    Order #12386201292 | 2026-08-17 20:37:30 | BUY  | Qty: 0.224000 @ Avg $606.600000 (Total: $135.8784) | Fee: 0.00016800 BNB (3 fills)
+    Order #12457788114 | 2026-08-24 18:53:48 | SELL | Qty: 0.222000 @ Avg $698.000000 (Total: $154.9560) | Fee: 0.15495600 USDT (1 fills)
+
+=== BTCUSDT (9 fills) ===
+  Summary: Bought 0.039330 ($3015.34) | Sold 0.036850 ($2971.47) | Net Qty Remaining: 0.002480
+    Order #65433744665 | 2026-08-17 22:14:30 | BUY  | Qty: 0.010620 @ Avg $64000.000000 (Total: $679.6800) | Fee: 0.00084045 BNB (1 fills)
+    Order #65760316861 | 2026-08-24 18:56:16 | SELL | Qty: 0.010620 @ Avg $78500.000000 (Total: $833.6700) | Fee: 0.83367000 USDT (1 fills)
+    Order #66359176704 | 2026-09-08 17:03:25 | BUY  | Qty: 0.011430 @ Avg $78250.000000 (Total: $894.3975) | Fee: 0.00001143 BTC (1 fills)
+    Order #66390858054 | 2026-09-09 20:21:59 | SELL | Qty: 0.005700 @ Avg $78240.000000 (Total: $445.9680) | Fee: 0.44596800 USDT (1 fills)
+    Order #66390865407 | 2026-09-09 20:22:00 | SELL | Qty: 0.005710 @ Avg $78250.000000 (Total: $446.8075) | Fee: 0.44680750 USDT (1 fills)
+    Order #66950261921 | 2026-09-25 19:22:38 | BUY  | Qty: 0.014820 @ Avg $83791.170000 (Total: $1241.7851) | Fee: 0.00120252 BNB (1 fills)
+    Order #66956319836 | 2026-09-25 21:19:17 | SELL | Qty: 0.014820 @ Avg $84010.010000 (Total: $1245.0283) | Fee: 1.24502835 USDT (1 fills)
+    Order #67291707385 | 2026-10-08 17:50:16 | BUY  | Qty: 0.001340 @ Avg $82000.000000 (Total: $109.8800) | Fee: 0.00010883 BNB (1 fills)
+    Order #67485152162 | 2026-10-15 18:53:54 | BUY  | Qty: 0.001120 @ Avg $80000.000000 (Total: $89.6000) | Fee: 0.00009412 BNB (1 fills)
+
+=== CETUSUSDT (2 fills) ===
+  Summary: Bought 3725.700000 ($100.00) | Sold 3721.900000 ($97.89) | Net Qty Remaining: 3.800000
+    Order #714513086 | 2026-09-21 11:34:10 | BUY  | Qty: 3725.700000 @ Avg $0.026840 (Total: $99.9978) | Fee: 3.72570000 CETUS (1 fills)
+    Order #714895646 | 2026-09-21 22:56:05 | SELL | Qty: 3721.900000 @ Avg $0.026300 (Total: $97.8860) | Fee: 0.09788597 USDT (1 fills)
+
+=== CFGUSDT (3 fills) ===
+  Summary: Bought 672.200000 ($79.99) | Sold 672.200000 ($88.90) | Net Qty Remaining: 0.000000
+    Order #98838076 | 2026-09-18 17:53:03 | BUY  | Qty: 672.200000 @ Avg $0.119000 (Total: $79.9918) | Fee: 0.00008054 BNB (1 fills)
+    Order #99059142 | 2026-09-19 13:14:17 | SELL | Qty: 336.100000 @ Avg $0.128700 (Total: $43.2561) | Fee: 0.00004254 BNB (1 fills)
+    Order #99941580 | 2026-09-22 00:25:13 | SELL | Qty: 336.100000 @ Avg $0.135800 (Total: $45.6424) | Fee: 0.04564238 USDT (1 fills)
+
+=== CFXUSDT (13 fills) ===
+  Summary: Bought 4094.000000 ($219.84) | Sold 4091.000000 ($265.58) | Net Qty Remaining: 3.000000
+    Order #2089501326 | 2026-09-21 12:16:55 | BUY  | Qty: 933.000000 @ Avg $0.053540 (Total: $49.9528) | Fee: 0.93300000 CFX (1 fills)
+    Order #2090308638 | 2026-09-23 10:49:02 | BUY  | Qty: 905.000000 @ Avg $0.055190 (Total: $49.9470) | Fee: 0.90500000 CFX (1 fills)
+    Order #2089501658 | 2026-09-23 19:13:00 | BUY  | Qty: 961.000000 @ Avg $0.052000 (Total: $49.9720) | Fee: 0.96100000 CFX (1 fills)
+    Order #2090696044 | 2026-09-24 00:55:55 | BUY  | Qty: 386.000000 @ Avg $0.051740 (Total: $19.9716) | Fee: 0.00001950 BNB (1 fills)
+    Order #2091361694 | 2026-09-25 19:03:25 | BUY  | Qty: 909.000000 @ Avg $0.055000 (Total: $49.9950) | Fee: 0.00004870 BNB (1 fills)
+    Order #2098072650 | 2026-10-10 19:50:38 | SELL | Qty: 1022.000000 @ Avg $0.062500 (Total: $63.8750) | Fee: 0.06387500 USDT (1 fills)
+    Order #2098533796 | 2026-10-10 20:13:50 | SELL | Qty: 720.000000 @ Avg $0.064500 (Total: $46.4400) | Fee: 0.04644000 USDT (1 fills)
+    Order #2098519086 | 2026-10-11 11:45:52 | SELL | Qty: 1012.000000 @ Avg $0.067000 (Total: $67.8040) | Fee: 0.06780400 USDT (1 fills)
+    Order #2104152200 | 2026-10-11 16:46:07 | SELL | Qty: 334.000000 @ Avg $0.065360 (Total: $21.8302) | Fee: 0.00002186 BNB (3 fills)
+    Order #2104225878 | 2026-10-11 17:09:08 | SELL | Qty: 501.000000 @ Avg $0.065560 (Total: $32.8456) | Fee: 0.03284556 USDT (1 fills)
+    Order #2104234258 | 2026-10-11 17:13:50 | SELL | Qty: 502.000000 @ Avg $0.065300 (Total: $32.7806) | Fee: 0.03278060 USDT (1 fills)
+
+=== CHIPUSDT (4 fills) ===
+  Summary: Bought 2900.000000 ($139.92) | Sold 2897.000000 ($140.01) | Net Qty Remaining: 3.000000
+    Order #294361872 | 2026-10-05 00:25:46 | BUY  | Qty: 2086.000000 @ Avg $0.047930 (Total: $99.9820) | Fee: 2.08600000 CHIP (1 fills)
+    Order #294402243 | 2026-10-05 01:04:06 | BUY  | Qty: 814.000000 @ Avg $0.049070 (Total: $39.9430) | Fee: 0.00003738 BNB (1 fills)
+    Order #295304852 | 2026-10-05 19:36:45 | SELL | Qty: 2897.000000 @ Avg $0.048330 (Total: $140.0120) | Fee: 0.14001201 USDT (2 fills)
+
+=== CTSIUSDT (2 fills) ===
+  Summary: Bought 3352.000000 ($117.32) | Sold 3348.000000 ($105.46) | Net Qty Remaining: 4.000000
+    Order #1200094265 | 2026-10-11 17:16:39 | BUY  | Qty: 3352.000000 @ Avg $0.035000 (Total: $117.3200) | Fee: 3.35200000 CTSI (1 fills)
+    Order #1201471431 | 2026-10-14 15:21:46 | SELL | Qty: 3348.000000 @ Avg $0.031500 (Total: $105.4620) | Fee: 0.10546200 USDT (1 fills)
+
+=== DIAUSDT (8 fills) ===
+  Summary: Bought 763.700000 ($139.99) | Sold 762.900000 ($122.06) | Net Qty Remaining: 0.800000
+    Order #859449056 | 2026-10-06 02:02:29 | BUY  | Qty: 763.700000 @ Avg $0.183300 (Total: $139.9862) | Fee: 0.76370000 DIA (6 fills)
+    Order #859451783 | 2026-10-07 14:48:40 | SELL | Qty: 381.400000 @ Avg $0.160000 (Total: $61.0240) | Fee: 0.06102400 USDT (1 fills)
+    Order #859452028 | 2026-10-07 14:48:40 | SELL | Qty: 381.500000 @ Avg $0.160000 (Total: $61.0400) | Fee: 0.06104000 USDT (1 fills)
+
+=== DUSKUSDT (2 fills) ===
+  Summary: Bought 1473.000000 ($139.94) | Sold 1471.000000 ($125.92) | Net Qty Remaining: 2.000000
+    Order #1278878343 | 2026-10-01 13:19:46 | BUY  | Qty: 1473.000000 @ Avg $0.095000 (Total: $139.9350) | Fee: 1.47300000 DUSK (1 fills)
+    Order #1279404296 | 2026-10-02 22:40:15 | SELL | Qty: 1471.000000 @ Avg $0.085600 (Total: $125.9176) | Fee: 0.12591760 USDT (1 fills)
+
+=== ETHUSDC (1 fills) ===
+  Summary: Bought 0.029300 ($74.40) | Sold 0.000000 ($0.00) | Net Qty Remaining: 0.029300
+    Order #11306384862 | 2026-10-11 22:09:53 | BUY  | Qty: 0.029300 @ Avg $2539.350000 (Total: $74.4030) | Fee: 0.00002784 ETH (1 fills)
+
+=== ETHUSDT (24 fills) ===
+  Summary: Bought 0.447800 ($1014.42) | Sold 0.345900 ($870.65) | Net Qty Remaining: 0.101900
+    Order #49041170830 | 2026-08-17 20:58:48 | BUY  | Qty: 0.177800 @ Avg $1912.000000 (Total: $339.9536) | Fee: 0.00042012 BNB (1 fills)
+    Order #49296975920 | 2026-08-24 19:01:25 | SELL | Qty: 0.177800 @ Avg $2500.000000 (Total: $444.5000) | Fee: 0.44450000 USDT (1 fills)
+    Order #49619514369 | 2026-09-08 18:39:13 | BUY  | Qty: 0.030600 @ Avg $2450.000000 (Total: $74.9700) | Fee: 0.00003060 ETH (1 fills)
+    Order #49706540911 | 2026-09-10 03:30:57 | SELL | Qty: 0.030500 @ Avg $2453.140000 (Total: $74.8208) | Fee: 0.00007778 BNB (1 fills)
+    Order #49813605556 | 2026-09-15 01:34:55 | BUY  | Qty: 0.076900 @ Avg $2597.730000 (Total: $199.7654) | Fee: 0.00012476 BNB (14 fills)
+    Order #49813652141 | 2026-09-15 08:10:32 | BUY  | Qty: 0.040000 @ Avg $2500.000000 (Total: $100.0000) | Fee: 0.00004000 ETH (1 fills)
+    Order #49823089297 | 2026-09-15 11:02:10 | SELL | Qty: 0.040000 @ Avg $2501.000000 (Total: $100.0400) | Fee: 0.10004000 USDT (1 fills)
+    Order #49878136254 | 2026-09-17 03:01:44 | BUY  | Qty: 0.020800 @ Avg $2400.000000 (Total: $49.9200) | Fee: 0.00002080 ETH (1 fills)
+    Order #49959339829 | 2026-09-20 11:52:51 | SELL | Qty: 0.097600 @ Avg $2574.650000 (Total: $251.2858) | Fee: 0.25128584 USDT (1 fills)
+    Order #50356154551 | 2026-10-07 22:40:56 | BUY  | Qty: 0.058800 @ Avg $2550.000000 (Total: $149.9400) | Fee: 0.00014655 BNB (1 fills)
+    Order #50507716659 | 2026-10-15 07:28:52 | BUY  | Qty: 0.042900 @ Avg $2328.000000 (Total: $99.8712) | Fee: 0.00004290 ETH (1 fills)
+
+=== FETUSDT (7 fills) ===
+  Summary: Bought 1338.000000 ($329.97) | Sold 1337.600000 ($313.26) | Net Qty Remaining: 0.400000
+    Order #3684242416 | 2026-09-25 16:56:35 | BUY  | Qty: 583.300000 @ Avg $0.240000 (Total: $139.9920) | Fee: 0.00013495 BNB (2 fills)
+    Order #3685393912 | 2026-09-26 07:02:24 | BUY  | Qty: 208.300000 @ Avg $0.240000 (Total: $49.9920) | Fee: 0.00004853 BNB (1 fills)
+    Order #3691186450 | 2026-09-29 21:09:00 | SELL | Qty: 791.600000 @ Avg $0.223300 (Total: $176.7643) | Fee: 0.17676428 USDT (1 fills)
+    Order #3699356987 | 2026-10-05 00:26:00 | BUY  | Qty: 390.300000 @ Avg $0.256200 (Total: $99.9949) | Fee: 0.39030000 FET (1 fills)
+    Order #3699358284 | 2026-10-05 00:27:11 | BUY  | Qty: 156.100000 @ Avg $0.256200 (Total: $39.9928) | Fee: 0.00003803 BNB (1 fills)
+    Order #3701653532 | 2026-10-05 19:47:30 | SELL | Qty: 546.000000 @ Avg $0.250000 (Total: $136.5000) | Fee: 0.13650000 USDT (1 fills)
+
+=== FILUSDT (3 fills) ===
+  Summary: Bought 122.500000 ($105.35) | Sold 122.370000 ($102.86) | Net Qty Remaining: 0.130000
+    Order #5250640566 | 2026-09-07 20:29:19 | BUY  | Qty: 122.500000 @ Avg $0.860000 (Total: $105.3500) | Fee: 0.12250000 FIL (1 fills)
+    Order #5252477237 | 2026-09-08 18:34:11 | SELL | Qty: 122.370000 @ Avg $0.840600 (Total: $102.8642) | Fee: 0.10286423 USDT (2 fills)
+
+=== FLOKIUSDT (7 fills) ===
+  Summary: Bought 18047201.000000 ($529.86) | Sold 18029153.000000 ($517.99) | Net Qty Remaining: 18048.000000
+    Order #10622867497 | 2026-09-21 17:28:40 | BUY  | Qty: 6104651.000000 @ Avg $0.000028 (Total: $168.0000) | Fee: 6104.65000000 FLOKI (1 fills)
+    Order #10624815911 | 2026-09-23 02:16:30 | BUY  | Qty: 11942550.000000 @ Avg $0.000030 (Total: $361.8593) | Fee: 11942.55000000 FLOKI (2 fills)
+    Order #10624886917 | 2026-09-23 16:34:32 | SELL | Qty: 5950450.000000 @ Avg $0.000029 (Total: $174.3482) | Fee: 0.17434819 USDT (1 fills)
+    Order #10624887033 | 2026-09-23 16:34:32 | SELL | Qty: 5950450.000000 @ Avg $0.000029 (Total: $174.3482) | Fee: 0.17434819 USDT (1 fills)
+    Order #10625590894 | 2026-09-23 19:20:14 | SELL | Qty: 3078980.000000 @ Avg $0.000028 (Total: $84.8259) | Fee: 0.08482590 USDT (1 fills)
+    Order #10625610363 | 2026-09-23 19:25:52 | SELL | Qty: 3049273.000000 @ Avg $0.000028 (Total: $84.4649) | Fee: 0.08446486 USDT (1 fills)
+
+=== FLOWUSDT (2 fills) ===
+  Summary: Bought 4078.180000 ($134.58) | Sold 4078.180000 ($134.99) | Net Qty Remaining: 0.000000
+    Order #984635029 | 2026-09-27 13:25:36 | BUY  | Qty: 4078.180000 @ Avg $0.033000 (Total: $134.5799) | Fee: 0.00013072 BNB (1 fills)
+    Order #984663090 | 2026-09-27 14:39:12 | SELL | Qty: 4078.180000 @ Avg $0.033100 (Total: $134.9878) | Fee: 0.00012987 BNB (1 fills)
+
+=== HOMEUSDT (11 fills) ===
+  Summary: Bought 16129.000000 ($100.00) | Sold 16129.000000 ($108.39) | Net Qty Remaining: 0.000000
+    Order #299107730 | 2026-09-19 13:15:46 | BUY  | Qty: 16129.000000 @ Avg $0.006200 (Total: $99.9998) | Fee: 0.00009831 BNB (4 fills)
+    Order #299376227 | 2026-09-20 11:32:47 | SELL | Qty: 16129.000000 @ Avg $0.006720 (Total: $108.3869) | Fee: 0.00010793 BNB (7 fills)
+
+=== IBMBUSDT (10 fills) ===
+  Summary: Bought 0.839000 ($199.83) | Sold 0.839000 ($200.29) | Net Qty Remaining: 0.000000
+    Order #17671861 | 2026-09-09 22:49:23 | BUY  | Qty: 0.839000 @ Avg $238.171120 (Total: $199.8256) | Fee: 0.00020193 BNB (7 fills)
+    Order #17733149 | 2026-09-10 03:31:17 | SELL | Qty: 0.420000 @ Avg $238.780000 (Total: $100.2876) | Fee: 0.00010432 BNB (1 fills)
+    Order #17733374 | 2026-09-10 03:34:51 | SELL | Qty: 0.419000 @ Avg $238.662983 (Total: $99.9998) | Fee: 0.00010412 BNB (2 fills)
+
+=== INITUSDT (6 fills) ===
+  Summary: Bought 3467.500000 ($242.71) | Sold 3463.900000 ($242.18) | Net Qty Remaining: 3.600000
+    Order #553530731 | 2026-08-30 14:46:12 | BUY  | Qty: 2162.500000 @ Avg $0.058000 (Total: $125.4250) | Fee: 2.16250000 INIT (1 fills)
+    Order #554730189 | 2026-09-02 04:22:23 | SELL | Qty: 2160.300000 @ Avg $0.058000 (Total: $125.2974) | Fee: 0.12529740 USDT (1 fills)
+    Order #562256485 | 2026-09-23 11:35:28 | BUY  | Qty: 1305.000000 @ Avg $0.089870 (Total: $117.2803) | Fee: 1.30500000 INIT (1 fills)
+    Order #562355073 | 2026-09-23 18:10:35 | SELL | Qty: 1303.600000 @ Avg $0.089660 (Total: $116.8806) | Fee: 0.11601191 USDT (3 fills)
+
+=== JTOUSDT (2 fills) ===
+  Summary: Bought 291.600000 ($139.97) | Sold 291.300000 ($138.80) | Net Qty Remaining: 0.300000
+    Order #2341288437 | 2026-09-20 20:34:38 | BUY  | Qty: 291.600000 @ Avg $0.480000 (Total: $139.9680) | Fee: 0.29160000 JTO (1 fills)
+    Order #2345035558 | 2026-09-23 19:32:01 | SELL | Qty: 291.300000 @ Avg $0.476500 (Total: $138.8045) | Fee: 0.13880445 USDT (1 fills)
+
+=== LTCUSDT (3 fills) ===
+  Summary: Bought 3.904000 ($250.56) | Sold 3.900000 ($255.25) | Net Qty Remaining: 0.004000
+    Order #7489842950 | 2026-10-11 23:49:51 | BUY  | Qty: 3.904000 @ Avg $64.180000 (Total: $250.5587) | Fee: 0.00390400 LTC (2 fills)
+    Order #7490029219 | 2026-10-12 09:39:32 | SELL | Qty: 3.900000 @ Avg $65.450000 (Total: $255.2550) | Fee: 0.25525500 USDT (1 fills)
+
+=== MEGAUSDT (4 fills) ===
+  Summary: Bought 2728.100000 ($131.05) | Sold 2725.300000 ($114.46) | Net Qty Remaining: 2.800000
+    Order #226550987 | 2026-10-11 21:32:15 | BUY  | Qty: 2728.100000 @ Avg $0.048038 (Total: $131.0533) | Fee: 2.72810000 MEGA (2 fills)
+    Order #226566516 | 2026-10-13 05:52:24 | SELL | Qty: 1362.700000 @ Avg $0.042000 (Total: $57.2334) | Fee: 0.05723340 USDT (1 fills)
+    Order #226565456 | 2026-10-13 05:52:24 | SELL | Qty: 1362.600000 @ Avg $0.042000 (Total: $57.2292) | Fee: 0.05722920 USDT (1 fills)
+
+=== MMTUSDT (2 fills) ===
+  Summary: Bought 616.100000 ($99.99) | Sold 616.100000 ($94.45) | Net Qty Remaining: 0.000000
+    Order #352789309 | 2026-09-19 21:14:47 | BUY  | Qty: 616.100000 @ Avg $0.162300 (Total: $99.9930) | Fee: 0.00009774 BNB (1 fills)
+    Order #352959473 | 2026-09-20 13:53:32 | SELL | Qty: 616.100000 @ Avg $0.153300 (Total: $94.4481) | Fee: 0.09444813 USDT (1 fills)
+
+=== NIGHTUSDT (10 fills) ===
+  Summary: Bought 4260.000000 ($99.94) | Sold 4260.000000 ($103.38) | Net Qty Remaining: 0.000000
+    Order #179419958 | 2026-09-18 17:30:46 | BUY  | Qty: 4260.000000 @ Avg $0.023461 (Total: $99.9418) | Fee: 0.00010056 BNB (6 fills)
+    Order #179908249 | 2026-09-19 13:13:51 | SELL | Qty: 2130.000000 @ Avg $0.024510 (Total: $52.2063) | Fee: 0.00005134 BNB (1 fills)
+    Order #180360042 | 2026-09-20 13:53:51 | SELL | Qty: 2130.000000 @ Avg $0.024025 (Total: $51.1730) | Fee: 0.05117300 USDT (3 fills)
+
+=== NILUSDT (11 fills) ===
+  Summary: Bought 2046.600000 ($100.00) | Sold 2046.600000 ($101.61) | Net Qty Remaining: 0.000000
+    Order #446488026 | 2026-09-19 20:58:39 | BUY  | Qty: 2046.600000 @ Avg $0.048860 (Total: $99.9969) | Fee: 0.00009780 BNB (1 fills)
+    Order #447135640 | 2026-09-20 13:23:57 | SELL | Qty: 2046.600000 @ Avg $0.049648 (Total: $101.6096) | Fee: 0.02980023 BNB (10 fills)
+
+=== NOMUSDT (4 fills) ===
+  Summary: Bought 74349.000000 ($200.00) | Sold 74274.000000 ($174.54) | Net Qty Remaining: 75.000000
+    Order #142076130 | 2026-10-04 17:33:35 | BUY  | Qty: 74349.000000 @ Avg $0.002690 (Total: $199.9988) | Fee: 74.34900000 NOM (1 fills)
+    Order #142081549 | 2026-10-06 21:37:17 | SELL | Qty: 25192.000000 @ Avg $0.002350 (Total: $59.2012) | Fee: 0.05920120 USDT (1 fills)
+    Order #142081414 | 2026-10-06 21:37:17 | SELL | Qty: 37137.000000 @ Avg $0.002350 (Total: $87.2720) | Fee: 0.08727195 USDT (1 fills)
+    Order #142081549 | 2026-10-06 21:37:17 | SELL | Qty: 11945.000000 @ Avg $0.002350 (Total: $28.0708) | Fee: 0.02807075 USDT (1 fills)
+
+=== ONDOUSDT (2 fills) ===
+  Summary: Bought 464.300000 ($235.96) | Sold 463.800000 ($235.70) | Net Qty Remaining: 0.500000
+    Order #1130777168 | 2026-10-12 00:29:02 | BUY  | Qty: 464.300000 @ Avg $0.508200 (Total: $235.9573) | Fee: 0.46430000 ONDO (1 fills)
+    Order #1131737115 | 2026-10-12 13:17:35 | SELL | Qty: 463.800000 @ Avg $0.508200 (Total: $235.7032) | Fee: 0.23570316 USDT (1 fills)
+
+=== OPNUSDT (4 fills) ===
+  Summary: Bought 2352.900000 ($139.86) | Sold 2350.500000 ($137.74) | Net Qty Remaining: 2.400000
+    Order #161667107 | 2026-10-06 02:03:30 | BUY  | Qty: 2352.900000 @ Avg $0.059440 (Total: $139.8570) | Fee: 2.35290000 OPN (2 fills)
+    Order #162075384 | 2026-10-07 18:49:31 | SELL | Qty: 2350.500000 @ Avg $0.058600 (Total: $137.7393) | Fee: 0.13773930 USDT (2 fills)
+
+=== ORCAUSDT (6 fills) ===
+  Summary: Bought 304.490000 ($455.21) | Sold 304.180000 ($424.29) | Net Qty Remaining: 0.310000
+    Order #499919904 | 2026-09-08 05:15:27 | BUY  | Qty: 304.490000 @ Avg $1.495000 (Total: $455.2125) | Fee: 0.30449000 ORCA (3 fills)
+    Order #500098516 | 2026-09-08 15:38:52 | SELL | Qty: 114.070000 @ Avg $1.403000 (Total: $160.0402) | Fee: 0.16004021 USDT (1 fills)
+    Order #500198214 | 2026-09-08 17:24:56 | SELL | Qty: 190.110000 @ Avg $1.390000 (Total: $264.2529) | Fee: 0.26425290 USDT (2 fills)
+
+=== PLUMEUSDT (5 fills) ===
+  Summary: Bought 7932.000000 ($154.91) | Sold 7924.000000 ($142.75) | Net Qty Remaining: 8.000000
+    Order #332962890 | 2026-10-01 14:35:03 | BUY  | Qty: 7932.000000 @ Avg $0.019530 (Total: $154.9120) | Fee: 7.93200000 PLUME (3 fills)
+    Order #332965195 | 2026-10-02 22:38:25 | SELL | Qty: 3962.000000 @ Avg $0.018000 (Total: $71.3160) | Fee: 0.07131600 USDT (1 fills)
+    Order #334062608 | 2026-10-02 22:42:02 | SELL | Qty: 3962.000000 @ Avg $0.018030 (Total: $71.4349) | Fee: 0.07143486 USDT (1 fills)
+
+=== PUMPUSDT (4 fills) ===
+  Summary: Bought 110127.000000 ($697.76) | Sold 110016.000000 ($673.52) | Net Qty Remaining: 111.000000
+    Order #951256406 | 2026-10-06 15:01:28 | BUY  | Qty: 110127.000000 @ Avg $0.006336 (Total: $697.7647) | Fee: 110.13000000 PUMP (1 fills)
+    Order #951266410 | 2026-10-06 22:11:02 | SELL | Qty: 55008.000000 @ Avg $0.006122 (Total: $336.7590) | Fee: 0.33675898 USDT (1 fills)
+    Order #951267133 | 2026-10-06 22:11:02 | SELL | Qty: 27504.000000 @ Avg $0.006122 (Total: $168.3795) | Fee: 0.16837949 USDT (1 fills)
+    Order #951268375 | 2026-10-06 22:11:02 | SELL | Qty: 27504.000000 @ Avg $0.006122 (Total: $168.3795) | Fee: 0.16837949 USDT (1 fills)
+
+=== SAGAUSDT (4 fills) ===
+  Summary: Bought 4475.200000 ($113.00) | Sold 4475.200000 ($119.85) | Net Qty Remaining: 0.000000
+    Order #2135938663 | 2026-09-19 13:21:12 | BUY  | Qty: 4475.200000 @ Avg $0.025250 (Total: $112.9988) | Fee: 0.00011108 BNB (2 fills)
+    Order #2135942359 | 2026-09-19 14:52:31 | SELL | Qty: 2237.600000 @ Avg $0.027500 (Total: $61.5340) | Fee: 0.00006016 BNB (1 fills)
+    Order #2136816530 | 2026-09-19 20:06:25 | SELL | Qty: 2237.600000 @ Avg $0.026060 (Total: $58.3119) | Fee: 0.00005676 BNB (1 fills)
+
+=== SCRUSDT (4 fills) ===
+  Summary: Bought 3380.600000 ($100.00) | Sold 3377.200000 ($91.18) | Net Qty Remaining: 3.400000
+    Order #441977909 | 2026-10-05 09:23:27 | BUY  | Qty: 3380.600000 @ Avg $0.029580 (Total: $99.9981) | Fee: 3.38060000 SCR (2 fills)
+    Order #443335257 | 2026-10-06 06:52:48 | SELL | Qty: 1688.600000 @ Avg $0.027000 (Total: $45.5922) | Fee: 0.04559220 USDT (1 fills)
+    Order #443335191 | 2026-10-06 06:52:48 | SELL | Qty: 1688.600000 @ Avg $0.027000 (Total: $45.5922) | Fee: 0.04559220 USDT (1 fills)
+
+=== SHELLUSDT (10 fills) ===
+  Summary: Bought 5957.400000 ($140.00) | Sold 5951.400000 ($161.38) | Net Qty Remaining: 6.000000
+    Order #321689209 | 2026-09-20 15:52:28 | BUY  | Qty: 2978.700000 @ Avg $0.023500 (Total: $69.9994) | Fee: 2.97870000 SHELL (1 fills)
+    Order #321689367 | 2026-09-20 15:55:13 | BUY  | Qty: 2978.700000 @ Avg $0.023500 (Total: $69.9994) | Fee: 2.97870000 SHELL (2 fills)
+    Order #322418910 | 2026-09-23 19:21:39 | SELL | Qty: 5951.400000 @ Avg $0.027117 (Total: $161.3825) | Fee: 0.16138251 USDT (7 fills)
+
+=== SOLUSDT (27 fills) ===
+  Summary: Bought 35.673000 ($3675.20) | Sold 32.798000 ($3445.57) | Net Qty Remaining: 2.875000
+    Order #17599734442 | 2026-08-17 20:58:39 | BUY  | Qty: 2.680000 @ Avg $76.100000 (Total: $203.9480) | Fee: 0.00025182 BNB (3 fills)
+    Order #17658797452 | 2026-08-24 18:48:56 | SELL | Qty: 2.680000 @ Avg $95.000000 (Total: $254.6000) | Fee: 0.00027306 BNB (1 fills)
+    Order #17771880978 | 2026-09-09 14:10:11 | BUY  | Qty: 11.011000 @ Avg $104.500000 (Total: $1150.6495) | Fee: 0.01101100 SOL (1 fills)
+    Order #17772077633 | 2026-09-09 17:14:51 | SELL | Qty: 10.999000 @ Avg $104.500000 (Total: $1149.3955) | Fee: 1.14939550 USDT (2 fills)
+    Order #17800857964 | 2026-09-15 01:32:03 | BUY  | Qty: 2.101000 @ Avg $104.700000 (Total: $219.9747) | Fee: 0.00022561 BNB (5 fills)
+    Order #17817209817 | 2026-09-17 14:19:35 | BUY  | Qty: 2.671000 @ Avg $100.600000 (Total: $268.7026) | Fee: 0.00267100 SOL (3 fills)
+    Order #17817468115 | 2026-09-17 17:10:12 | SELL | Qty: 2.671000 @ Avg $100.600000 (Total: $268.7026) | Fee: 0.26870260 USDT (1 fills)
+    Order #17817817787 | 2026-09-17 17:23:38 | BUY  | Qty: 2.376000 @ Avg $101.000000 (Total: $239.9760) | Fee: 0.00237600 SOL (1 fills)
+    Order #17829214046 | 2026-09-19 03:17:07 | SELL | Qty: 1.117000 @ Avg $113.520000 (Total: $126.8018) | Fee: 0.00012444 BNB (1 fills)
+    Order #17829254762 | 2026-09-19 03:30:08 | SELL | Qty: 0.167000 @ Avg $113.230000 (Total: $18.9094) | Fee: 0.00001856 BNB (1 fills)
+    Order #17835442995 | 2026-09-20 11:44:39 | SELL | Qty: 1.083000 @ Avg $108.300000 (Total: $117.2889) | Fee: 0.11728890 USDT (1 fills)
+    Order #17835448119 | 2026-09-20 11:46:05 | SELL | Qty: 1.083000 @ Avg $108.250000 (Total: $117.2348) | Fee: 0.11723475 USDT (1 fills)
+    Order #17835472536 | 2026-09-20 11:55:18 | SELL | Qty: 1.021000 @ Avg $108.340000 (Total: $110.6151) | Fee: 0.11061514 USDT (1 fills)
+    Order #17945515636 | 2026-10-08 22:21:30 | BUY  | Qty: 1.401000 @ Avg $107.000000 (Total: $149.9070) | Fee: 0.00015592 BNB (1 fills)
+    Order #17945516162 | 2026-10-13 05:51:31 | BUY  | Qty: 1.456000 @ Avg $103.000000 (Total: $149.9680) | Fee: 0.00145600 SOL (1 fills)
+    Order #17983138004 | 2026-10-14 13:26:11 | BUY  | Qty: 11.977000 @ Avg $107.880000 (Total: $1292.0788) | Fee: 0.01197700 SOL (1 fills)
+    Order #17983282001 | 2026-10-14 13:59:02 | SELL | Qty: 11.977000 @ Avg $107.040000 (Total: $1282.0181) | Fee: 1.28201808 USDT (2 fills)
+
+=== STGUSDT (2 fills) ===
+  Summary: Bought 584.700000 ($99.98) | Sold 584.700000 ($87.70) | Net Qty Remaining: 0.000000
+    Order #1190569429 | 2026-09-19 14:34:12 | BUY  | Qty: 584.700000 @ Avg $0.171000 (Total: $99.9837) | Fee: 0.00009770 BNB (1 fills)
+    Order #1190644521 | 2026-09-19 18:21:37 | SELL | Qty: 584.700000 @ Avg $0.150000 (Total: $87.7050) | Fee: 0.00008538 BNB (1 fills)
+
+=== SUIUSDT (2 fills) ===
+  Summary: Bought 145.900000 ($158.59) | Sold 145.700000 ($155.35) | Net Qty Remaining: 0.200000
+    Order #9039108427 | 2026-10-12 21:40:40 | BUY  | Qty: 145.900000 @ Avg $1.087000 (Total: $158.5933) | Fee: 0.14590000 SUI (1 fills)
+    Order #9039551748 | 2026-10-12 23:51:20 | SELL | Qty: 145.700000 @ Avg $1.066200 (Total: $155.3453) | Fee: 0.15534534 USDT (1 fills)
+
+=== SYRUPUSDT (5 fills) ===
+  Summary: Bought 467.400000 ($121.52) | Sold 466.900000 ($109.72) | Net Qty Remaining: 0.500000
+    Order #634393145 | 2026-10-13 13:36:01 | BUY  | Qty: 467.400000 @ Avg $0.260000 (Total: $121.5240) | Fee: 0.46740000 SYRUP (1 fills)
+    Order #634749085 | 2026-10-14 04:07:06 | SELL | Qty: 466.900000 @ Avg $0.235000 (Total: $109.7215) | Fee: 0.10972150 USDT (4 fills)
+
+=== TAOUSDT (2 fills) ===
+  Summary: Bought 0.550500 ($147.53) | Sold 0.550500 ($141.37) | Net Qty Remaining: 0.000000
+    Order #2577650785 | 2026-09-19 15:58:23 | BUY  | Qty: 0.550500 @ Avg $268.000000 (Total: $147.5340) | Fee: 0.00014475 BNB (1 fills)
+    Order #2577654582 | 2026-09-20 07:46:05 | SELL | Qty: 0.550500 @ Avg $256.800000 (Total: $141.3684) | Fee: 0.00014069 BNB (1 fills)
+
+=== TIAUSDT (8 fills) ===
+  Summary: Bought 923.380000 ($559.76) | Sold 922.450000 ($570.63) | Net Qty Remaining: 0.930000
+    Order #3502084255 | 2026-10-19 20:51:29 | BUY  | Qty: 411.220000 @ Avg $0.607700 (Total: $249.8984) | Fee: 0.41122000 TIA (2 fills)
+    Order #3502089446 | 2026-10-19 21:14:33 | SELL | Qty: 82.160000 @ Avg $0.613000 (Total: $50.3641) | Fee: 0.05036408 USDT (1 fills)
+    Order #3502139191 | 2026-10-19 21:23:55 | SELL | Qty: 328.640000 @ Avg $0.607700 (Total: $199.7145) | Fee: 0.19971453 USDT (1 fills)
+    Order #3502154039 | 2026-10-19 22:02:34 | BUY  | Qty: 512.160000 @ Avg $0.605000 (Total: $309.8568) | Fee: 0.51216000 TIA (1 fills)
+    Order #3502232147 | 2026-10-20 02:23:08 | SELL | Qty: 255.820000 @ Avg $0.613000 (Total: $156.8177) | Fee: 0.15681766 USDT (2 fills)
+    Order #3503202524 | 2026-10-20 11:19:21 | SELL | Qty: 255.830000 @ Avg $0.640000 (Total: $163.7312) | Fee: 0.16373120 USDT (1 fills)
+
+=== TUTUSDT (2 fills) ===
+  Summary: Bought 3733.000000 ($95.86) | Sold 3729.000000 ($88.15) | Net Qty Remaining: 4.000000
+    Order #700156565 | 2026-09-23 11:35:53 | BUY  | Qty: 3733.000000 @ Avg $0.025680 (Total: $95.8634) | Fee: 3.73300000 TUT (1 fills)
+    Order #700791606 | 2026-09-23 19:29:19 | SELL | Qty: 3729.000000 @ Avg $0.023640 (Total: $88.1536) | Fee: 0.08815356 USDT (1 fills)
+
+=== VIRTUALUSDT (5 fills) ===
+  Summary: Bought 175.500000 ($139.93) | Sold 175.500000 ($140.05) | Net Qty Remaining: 0.000000
+    Order #1741694859 | 2026-09-25 17:13:08 | BUY  | Qty: 175.500000 @ Avg $0.797300 (Total: $139.9262) | Fee: 0.00013452 BNB (3 fills)
+    Order #1749254305 | 2026-09-29 23:16:11 | SELL | Qty: 175.500000 @ Avg $0.798000 (Total: $140.0490) | Fee: 0.13367133 BNB (2 fills)
+
+=== ZECUSDT (4 fills) ===
+  Summary: Bought 0.358000 ($508.01) | Sold 0.356000 ($509.73) | Net Qty Remaining: 0.002000
+    Order #6136385687 | 2026-09-16 17:24:22 | BUY  | Qty: 0.182000 @ Avg $1215.000000 (Total: $221.1300) | Fee: 0.00018200 ZEC (1 fills)
+    Order #6136483131 | 2026-09-16 23:07:18 | SELL | Qty: 0.181000 @ Avg $1304.700000 (Total: $236.1507) | Fee: 0.23615070 USDT (1 fills)
+    Order #6276779725 | 2026-09-23 18:58:44 | BUY  | Qty: 0.176000 @ Avg $1630.000000 (Total: $286.8800) | Fee: 0.00017600 ZEC (1 fills)
+    Order #6276788405 | 2026-09-23 19:13:08 | SELL | Qty: 0.175000 @ Avg $1563.300000 (Total: $273.5775) | Fee: 0.27357750 USDT (1 fills)
+
+=== ZKPUSDT (5 fills) ===
+  Summary: Bought 3521.200000 ($169.99) | Sold 0.000000 ($0.00) | Net Qty Remaining: 3521.200000
+    Order #138529435 | 2026-10-11 14:15:45 | BUY  | Qty: 2040.800000 @ Avg $0.049000 (Total: $99.9992) | Fee: 2.04080000 ZKP (1 fills)
+    Order #138529718 | 2026-10-13 02:47:08 | BUY  | Qty: 638.200000 @ Avg $0.047000 (Total: $29.9954) | Fee: 0.63820000 ZKP (1 fills)
+    Order #139197893 | 2026-10-13 10:46:27 | BUY  | Qty: 626.300000 @ Avg $0.047900 (Total: $29.9998) | Fee: 0.62630000 ZKP (2 fills)
+    Order #139693920 | 2026-10-14 15:40:54 | BUY  | Qty: 215.900000 @ Avg $0.046300 (Total: $9.9962) | Fee: 0.21590000 ZKP (1 fills)
+

@@ -6,6 +6,7 @@ import {
 import { BinanceBalanceInfo, PnlViewMode } from '../types';
 import { formatCurrency, formatPkr, formatCurrencyPrivacy } from '../lib/tradeUtils';
 import { useTradeContext } from '../lib/TradeContext';
+import { triggerHaptic } from '../lib/haptics';
 import { Button } from './Button';
 import { Input } from './Input';
 
@@ -21,6 +22,8 @@ interface PortfolioRiskCockpitProps {
     totalFeeDrag?: number;
     totalTradesInvested: number;
     totalHoldingsInvested: number;
+    totalLimitsInvested?: number;
+    totalLimitsCount?: number;
   };
   binanceBalance: BinanceBalanceInfo | null;
   privacyMode: boolean;
@@ -35,6 +38,8 @@ interface PortfolioRiskCockpitProps {
   onSyncBinance?: () => void;
   isSyncing?: boolean;
   unprotectedTradesCount?: number;
+  historyTimeHorizon?: string;
+  onHistoryTimeHorizonChange?: (horizon: string) => Promise<void>;
 }
 
 export function PortfolioRiskCockpit({
@@ -51,17 +56,23 @@ export function PortfolioRiskCockpit({
   onSaveBaseCapital,
   onSyncBinance,
   isSyncing = false,
-  unprotectedTradesCount = 0
+  unprotectedTradesCount = 0,
+  historyTimeHorizon = '3M',
+  onHistoryTimeHorizonChange
 }: PortfolioRiskCockpitProps) {
   const { 
     totalEquity, 
     availableCapital, 
+    freeAvailableCash,
+    lockedCash,
     totalActiveRisk, 
     totalRealizedPnL = 0,
     totalLiveUnrealizedPnL = 0,
     totalFeeDrag = 0,
     totalTradesInvested, 
-    totalHoldingsInvested 
+    totalHoldingsInvested,
+    totalLimitsInvested = 0,
+    totalLimitsCount = 0
   } = stats;
 
   const {
@@ -76,17 +87,30 @@ export function PortfolioRiskCockpit({
   const [isEditingBase, setIsEditingBase] = useState(false);
   const [tempBaseCapital, setTempBaseCapital] = useState(baseCapital.toString());
   const [tempPkrRate, setTempPkrRate] = useState(pkrRate.toString());
+  const [tempHistoryTimeHorizon, setTempHistoryTimeHorizon] = useState(historyTimeHorizon);
   const [isRefreshingPkr, setIsRefreshingPkr] = useState(false);
 
   useEffect(() => {
     setTempBaseCapital(baseCapital.toString());
     setTempPkrRate(pkrRate.toString());
-  }, [baseCapital, pkrRate, isEditingBase]);
+    if (historyTimeHorizon) setTempHistoryTimeHorizon(historyTimeHorizon);
+  }, [baseCapital, pkrRate, historyTimeHorizon, isEditingBase]);
 
   const total = totalEquity > 0 ? totalEquity : 1;
-  const cashPct = Math.min(100, Math.max(0, (availableCapital / total) * 100));
-  const tradesPct = Math.min(100, Math.max(0, (totalTradesInvested / total) * 100));
-  const holdingsPct = Math.min(100, Math.max(0, (totalHoldingsInvested / total) * 100));
+  const rawLimits = Math.max(0, (totalLimitsInvested && totalLimitsInvested > 0) ? totalLimitsInvested : (lockedCash || 0));
+  const rawCash = rawLimits > 0
+    ? Math.max(0, (freeAvailableCash !== undefined && freeAvailableCash >= 0) ? freeAvailableCash : (availableCapital - rawLimits))
+    : Math.max(0, availableCapital);
+  const rawTrades = Math.max(0, totalTradesInvested);
+  const rawHoldings = Math.max(0, totalHoldingsInvested);
+  const sumRaw = rawCash + rawLimits + rawTrades + rawHoldings;
+  
+  const denom = sumRaw > 0 ? sumRaw : total;
+
+  const cashPct = (rawCash / denom) * 100;
+  const limitsPct = (rawLimits / denom) * 100;
+  const tradesPct = (rawTrades / denom) * 100;
+  const holdingsPct = (rawHoldings / denom) * 100;
 
   const riskPct = totalEquity > 0 ? (totalActiveRisk / totalEquity) * 100 : 0;
   const isHighRisk = riskPct > 3.0;
@@ -97,10 +121,14 @@ export function PortfolioRiskCockpit({
   const fmtCurrency = (val: number) => formatCurrencyPrivacy(val, privacyMode);
   const fmtPkr = (val: number) => {
     if (privacyMode) return '••••••';
-    return `Rs ${(val / 1000).toFixed(1)}k`;
+    if (Math.abs(val) >= 10000) {
+      return `${val < 0 ? '-' : ''}Rs ${(Math.abs(val) / 1000).toFixed(1)}k`;
+    }
+    return formatPkr(val, privacyMode);
   };
 
   const handleSaveSettings = async () => {
+    triggerHaptic('success');
     const parsedBase = parseFloat(tempBaseCapital);
     if (!isNaN(parsedBase) && parsedBase > 0 && onSaveBaseCapital) {
       onSaveBaseCapital(parsedBase);
@@ -109,10 +137,14 @@ export function PortfolioRiskCockpit({
     if (!isNaN(parsedPkr) && parsedPkr > 0) {
       await setPkrRate(parsedPkr);
     }
+    if (onHistoryTimeHorizonChange && tempHistoryTimeHorizon) {
+      await onHistoryTimeHorizonChange(tempHistoryTimeHorizon);
+    }
     setIsEditingBase(false);
   };
 
   const handleFetchBinancePkr = async () => {
+    triggerHaptic('medium');
     setIsRefreshingPkr(true);
     const rate = await fetchBinancePkrRate();
     if (rate) {
@@ -122,7 +154,7 @@ export function PortfolioRiskCockpit({
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 sm:p-4 shadow-sm relative overflow-hidden flex flex-col gap-3">
+    <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 sm:p-4 shadow-sm relative overflow-hidden flex flex-col gap-3 tabular-nums">
       <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-600 via-sky-400 to-indigo-500"></div>
 
       {/* Top Header: Title, Risk Status & Quick Action Controls */}
@@ -135,17 +167,17 @@ export function PortfolioRiskCockpit({
           
           {/* Risk Level Badge */}
           {isHighRisk ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 bg-neutral-900 border border-neutral-700 px-2 py-0.5 rounded shrink-0">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 bg-neutral-900 border border-neutral-700 px-2 py-0.5 rounded shrink-0 tabular-nums">
               <ShieldAlert className="w-3 h-3 text-slate-400" />
               <span>Elevated Risk ({riskPct.toFixed(1)}%)</span>
             </span>
           ) : isModerateRisk ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-blue-300/80 bg-blue-950/40 border border-blue-800/60 px-2 py-0.5 rounded shrink-0">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-blue-300/80 bg-blue-950/40 border border-blue-800/60 px-2 py-0.5 rounded shrink-0 tabular-nums">
               <ShieldCheck className="w-3 h-3 text-blue-400" />
               <span>Moderate ({riskPct.toFixed(1)}%)</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-sky-300 bg-blue-950/60 border border-blue-800/80 px-2 py-0.5 rounded shrink-0">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-sky-300 bg-blue-950/60 border border-blue-800/80 px-2 py-0.5 rounded shrink-0 tabular-nums">
               <ShieldCheck className="w-3 h-3 text-sky-400" />
               <span>Disciplined ({riskPct.toFixed(1)}%)</span>
             </span>
@@ -154,7 +186,7 @@ export function PortfolioRiskCockpit({
           {/* Unprotected Trades Indicator */}
           {unprotectedTradesCount > 0 && (
             <span 
-              className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-950/50 border border-amber-800/70 px-2 py-0.5 rounded shrink-0" 
+              className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-950/50 border border-amber-800/70 px-2 py-0.5 rounded shrink-0 tabular-nums" 
               title={`${unprotectedTradesCount} open position${unprotectedTradesCount > 1 ? 's' : ''} running without a Stop Loss (Framework Applied)`}
             >
               <AlertTriangle className="w-3 h-3 text-amber-400" />
@@ -176,8 +208,11 @@ export function PortfolioRiskCockpit({
           <div className="flex items-center bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 text-[11px] font-mono">
             <button
               type="button"
-              onClick={() => onViewModeChange?.('DOLLAR')}
-              className={`px-2.5 py-0.5 rounded transition-all ${
+              onClick={() => {
+                triggerHaptic('selection');
+                onViewModeChange?.('DOLLAR');
+              }}
+              className={`px-2.5 py-0.5 rounded transition-all active:scale-95 ${
                 viewMode === 'DOLLAR' 
                   ? 'bg-neutral-800 text-white font-bold shadow-sm' 
                   : 'text-neutral-400 hover:text-neutral-200'
@@ -188,8 +223,11 @@ export function PortfolioRiskCockpit({
             </button>
             <button
               type="button"
-              onClick={() => onViewModeChange?.('R_MULTIPLE')}
-              className={`px-2.5 py-0.5 rounded transition-all flex items-center gap-0.5 ${
+              onClick={() => {
+                triggerHaptic('selection');
+                onViewModeChange?.('R_MULTIPLE');
+              }}
+              className={`px-2.5 py-0.5 rounded transition-all active:scale-95 flex items-center gap-0.5 ${
                 viewMode === 'R_MULTIPLE' 
                   ? 'bg-blue-600/30 text-sky-300 font-bold border border-blue-500/40 shadow-sm' 
                   : 'text-neutral-400 hover:text-neutral-200'
@@ -200,8 +238,11 @@ export function PortfolioRiskCockpit({
             </button>
             <button
               type="button"
-              onClick={() => onViewModeChange?.('PERCENT')}
-              className={`px-2.5 py-0.5 rounded transition-all ${
+              onClick={() => {
+                triggerHaptic('selection');
+                onViewModeChange?.('PERCENT');
+              }}
+              className={`px-2.5 py-0.5 rounded transition-all active:scale-95 ${
                 viewMode === 'PERCENT' 
                   ? 'bg-neutral-800 text-white font-bold shadow-sm' 
                   : 'text-neutral-400 hover:text-neutral-200'
@@ -215,8 +256,11 @@ export function PortfolioRiskCockpit({
           {/* Unified Stealth / Zen Eye Toggle */}
           <button
             type="button"
-            onClick={onTogglePrivacy}
-            className={`h-7 px-2.5 flex items-center gap-1.5 text-[11px] font-medium rounded-md border transition-all select-none ${
+            onClick={() => {
+              triggerHaptic('light');
+              onTogglePrivacy();
+            }}
+            className={`h-7 px-2.5 flex items-center gap-1.5 text-[11px] font-medium rounded-md border transition-all active:scale-95 select-none ${
               privacyMode 
                 ? 'bg-blue-950/70 text-sky-300 border-blue-700/60 shadow-sm font-semibold' 
                 : 'bg-neutral-950 text-neutral-400 border-neutral-800 hover:text-white'
@@ -234,9 +278,12 @@ export function PortfolioRiskCockpit({
           {onSyncBinance && (
             <button
               type="button"
-              onClick={onSyncBinance}
+              onClick={() => {
+                triggerHaptic('medium');
+                onSyncBinance();
+              }}
               disabled={isSyncing}
-              className="h-7 px-2 flex items-center gap-1 text-[11px] font-medium text-sky-400 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-800/60 rounded-md transition-colors disabled:opacity-50"
+              className="h-7 px-2 flex items-center gap-1 text-[11px] font-medium text-sky-400 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-800/60 rounded-md transition-all active:scale-95 disabled:opacity-50"
               title="Sync Spot balances and executions with Binance"
             >
               <Wallet className={`w-3.5 h-3.5 ${isSyncing ? 'animate-pulse' : ''}`} />
@@ -248,11 +295,12 @@ export function PortfolioRiskCockpit({
             <button
               type="button"
               onClick={() => {
+                triggerHaptic('selection');
                 setIsEditingBase(!isEditingBase);
                 setTempBaseCapital(baseCapital.toString());
                 setTempPkrRate(pkrRate.toString());
               }}
-              className={`h-7 w-7 flex items-center justify-center rounded-md border transition-colors ${
+              className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all active:scale-95 ${
                 isEditingBase
                   ? 'bg-blue-600 text-white border-blue-500'
                   : 'text-neutral-400 hover:text-white bg-neutral-950 border border-neutral-800 hover:border-neutral-700'
@@ -369,6 +417,38 @@ export function PortfolioRiskCockpit({
                 )}
               </div>
             </div>
+
+            {/* History Window / Time Horizon Setting */}
+            <div className="pt-2 border-t border-neutral-800/80 sm:col-span-2">
+              <label className="text-[10px] text-neutral-400 uppercase font-semibold block mb-1">
+                Realized PnL &amp; Closed History Window (Persistent)
+              </label>
+              <div className="flex items-center gap-1 bg-neutral-900 p-1 rounded-lg border border-neutral-800 text-xs font-mono">
+                {[
+                  { id: '1M', label: '30 Days' },
+                  { id: '3M', label: '3 Months' },
+                  { id: '6M', label: '6 Months' },
+                  { id: '1Y', label: '1 Year' },
+                  { id: 'ALL', label: 'All Time' }
+                ].map(h => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => setTempHistoryTimeHorizon(h.id)}
+                    className={`flex-1 py-1 px-2 rounded text-center transition-all text-[11px] ${
+                      tempHistoryTimeHorizon === h.id
+                        ? 'bg-blue-600 text-white font-bold shadow-sm'
+                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                    }`}
+                  >
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10px] text-neutral-500 mt-1 block">
+                Determines which past closed trades are included in Realized PnL and win-rate analytics. Saved securely to your account.
+              </span>
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -441,6 +521,10 @@ export function PortfolioRiskCockpit({
                 <span>Masked</span>
               ) : viewMode === 'PERCENT' ? (
                 <span>Free Buying Power</span>
+              ) : rawLimits > 0 ? (
+                <span title={`Free cash: ${fmtCurrency(rawCash)} • Reserved in limits: ${fmtCurrency(rawLimits)}`}>
+                  Free: ${rawCash.toFixed(0)} <span className="text-amber-400 font-medium">• Lim: ${rawLimits.toFixed(0)}</span>
+                </span>
               ) : binanceBalance ? (
                 <span>Free: ${binanceBalance.usdtFree.toFixed(0)}</span>
               ) : (
@@ -508,12 +592,12 @@ export function PortfolioRiskCockpit({
               )}
             </div>
             <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
-              {viewMode === 'R_MULTIPLE' && !privacyMode ? (
-                <span>{totalRealizedPnL >= 0 ? '+' : ''}{fmtCurrency(totalRealizedPnL)}</span>
+              {viewMode === 'ZEN' || privacyMode ? (
+                'Closed trades'
               ) : viewMode === 'PERCENT' ? (
                 'Closed trades return'
               ) : (
-                'Closed trades'
+                <span>{totalRealizedPnL >= 0 ? '+' : ''}{fmtPkr(totalRealizedPnL * PKR_RATE)}</span>
               )}
             </div>
           </div>
@@ -553,12 +637,12 @@ export function PortfolioRiskCockpit({
               )}
             </div>
             <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
-              {viewMode === 'R_MULTIPLE' && !privacyMode ? (
-                <span>{totalLiveUnrealizedPnL >= 0 ? '+' : ''}{fmtCurrency(totalLiveUnrealizedPnL)}</span>
+              {viewMode === 'ZEN' || privacyMode ? (
+                'Open positions'
               ) : viewMode === 'PERCENT' ? (
                 'Open positions floating'
               ) : (
-                'Open positions'
+                <span>{totalLiveUnrealizedPnL >= 0 ? '+' : ''}{fmtPkr(totalLiveUnrealizedPnL * PKR_RATE)}</span>
               )}
             </div>
           </div>
@@ -572,7 +656,14 @@ export function PortfolioRiskCockpit({
             <div 
               className="bg-neutral-300 transition-all duration-300"
               style={{ width: `${cashPct}%` }}
-              title={`USDT Cash: ${cashPct.toFixed(1)}%`}
+              title={`Free Cash: ${cashPct.toFixed(1)}%`}
+            />
+          )}
+          {limitsPct > 0 && (
+            <div 
+              className="bg-amber-400 transition-all duration-300"
+              style={{ width: `${limitsPct}%` }}
+              title={`Limit Orders: ${limitsPct.toFixed(1)}%`}
             />
           )}
           {tradesPct > 0 && (
@@ -593,15 +684,23 @@ export function PortfolioRiskCockpit({
 
         {/* Compact Inline Legend - Hides all dollar values in PERCENT mode */}
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] font-mono text-neutral-400">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" title={rawLimits > 0 ? `Free liquid cash (Total cash: ${fmtCurrency(availableCapital)})` : 'Available cash'}>
             <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 shrink-0" />
             <span>Cash:</span>
             <strong className="text-neutral-200">
-              {viewMode === 'PERCENT' ? `${cashPct.toFixed(1)}%` : `${fmtCurrency(availableCapital)} (${cashPct.toFixed(0)}%)`}
+              {viewMode === 'PERCENT' ? `${cashPct.toFixed(1)}%` : `${fmtCurrency(rawCash)} (${cashPct.toFixed(0)}%)`}
             </strong>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" title={`Pending limit orders: ${fmtCurrency(rawLimits)}${totalLimitsCount ? ` (${totalLimitsCount} order${totalLimitsCount > 1 ? 's' : ''})` : ''}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+            <span>Limits:</span>
+            <strong className="text-neutral-200">
+              {viewMode === 'PERCENT' ? `${limitsPct.toFixed(1)}%` : `${fmtCurrency(rawLimits)} (${limitsPct.toFixed(0)}%)`}
+            </strong>
+          </div>
+
+          <div className="flex items-center gap-1" title={`Active swing & day trades: ${fmtCurrency(totalTradesInvested)}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
             <span>Trades:</span>
             <strong className="text-neutral-200">
@@ -609,7 +708,7 @@ export function PortfolioRiskCockpit({
             </strong>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" title={`Crypto investments & holdings: ${fmtCurrency(totalHoldingsInvested)}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
             <span>Investments:</span>
             <strong className="text-neutral-200">

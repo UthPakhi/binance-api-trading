@@ -202,7 +202,8 @@ describe('Test Suite 4: PnL & Fee Integrity and Edge Cases (E1 - E10)', () => {
       takeProfit1: 5.50,
       takeProfit2: 6.20,
       status: 'ACTIVE',
-      market: 'SPOT'
+      market: 'SPOT',
+      notes: 'Imported from Binance Spot'
     });
 
     assert.equal(trade.status, 'ACTIVE');
@@ -218,7 +219,8 @@ describe('Test Suite 4: PnL & Fee Integrity and Edge Cases (E1 - E10)', () => {
       entryPrice: 4.85,
       positionSizeCoins: 257.96,
       status: 'ACTIVE',
-      market: 'SPOT'
+      market: 'SPOT',
+      notes: 'Imported from Binance Spot'
     });
 
     assert.equal(isBinanceLinkedTrade(spotTrade), true);

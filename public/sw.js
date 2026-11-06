@@ -4,8 +4,16 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => caches.delete(cacheName))
+      );
+    }).then(() => self.clients.claim())
+  );
 });
+
+const recentPushTags = new Map();
 
 self.addEventListener('push', (event) => {
   let data = {};
@@ -15,14 +23,22 @@ self.addEventListener('push', (event) => {
     data = { body: event.data ? event.data.text() : 'Trade Alert' };
   }
 
+  const tag = data.tag || ('trade-alert-' + Date.now());
+  const now = Date.now();
+  const prev = recentPushTags.get(tag);
+  if (prev && (now - prev < 15000)) {
+    return;
+  }
+  recentPushTags.set(tag, now);
+
   const title = data.title || 'Trade Sizer Alert';
   const options = {
     body: data.body || 'A trade price target or stop loss was reached.',
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
     vibrate: [200, 100, 200, 100, 200],
-    tag: data.tag || ('trade-alert-' + Date.now()),
-    renotify: true,
+    tag: tag,
+    renotify: false,
     requireInteraction: true,
     data: {
       url: data.url || '/'
@@ -39,15 +55,20 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    (async () => {
+      const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       for (const client of windowClients) {
         if (client.url.includes(targetUrl) && 'focus' in client) {
-          return client.focus();
+          await client.focus();
+          return;
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
+        const newWindow = await self.clients.openWindow(targetUrl);
+        if (newWindow && 'focus' in newWindow) {
+          await newWindow.focus();
+        }
       }
-    })
+    })()
   );
 });

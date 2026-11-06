@@ -35,9 +35,96 @@ export interface Trade {
 
   // Execution tracking & precision
   binanceOrderId?: number | string;
+  binanceTradeId?: number | string;
+  idempotencyKey?: string;
   clientOrderId?: string;
+  openBuyLots?: any[];
+  fills?: any[];
+  ledgerMatches?: Array<{
+    matchId: string;
+    symbol: string;
+    buyFillId: string;
+    sellFillId: string;
+    buyOrderId: string;
+    sellOrderId: string;
+    buyTradeId: string;
+    sellTradeId: string;
+    matchedQty: number;
+    buyPrice: number;
+    sellPrice: number;
+    costBasisUsd: number;
+    grossProceedsUsd: number;
+    allocatedBuyFeeUsd: number;
+    allocatedSellFeeUsd: number;
+    buyFeeAsset: string;
+    sellFeeAsset: string;
+    netPnlUsd?: number;
+    netRealizedPnlUsd: number;
+    buyTimestamp: number;
+    sellTimestamp: number;
+    reconciliationDeltaUsd: number;
+  }>;
+  costBasisMethod?: 'FIFO' | 'WAC';
+  fifoSummary?: {
+    method: 'FIFO' | 'WAC';
+    remainingQty: number;
+    soldQty: number;
+    remainingUnitCostBasisUsd: number;
+    remainingCostBasisTotalUsd: number;
+    closedUnitCostBasisUsd: number;
+    closedCostBasisTotalUsd: number;
+    grossProceedsUsd: number;
+    allocatedBuyFeeUsd: number;
+    allocatedSellFeeUsd: number;
+    unallocatedRemainingBuyFeeUsd: number;
+    totalRealizedFeesUsd: number;
+    netRealizedPnlExact8Usd: number;
+    netRealizedPnl2Usd: number;
+    dynamicBreakevenPriceUsd: number | null;
+    reconciliationDriftUsd: number;
+  };
+  wacSummary?: {
+    method: 'FIFO' | 'WAC';
+    remainingQty: number;
+    soldQty: number;
+    remainingUnitCostBasisUsd: number;
+    remainingCostBasisTotalUsd: number;
+    closedUnitCostBasisUsd: number;
+    closedCostBasisTotalUsd: number;
+    grossProceedsUsd: number;
+    allocatedBuyFeeUsd: number;
+    allocatedSellFeeUsd: number;
+    unallocatedRemainingBuyFeeUsd: number;
+    totalRealizedFeesUsd: number;
+    netRealizedPnlExact8Usd: number;
+    netRealizedPnl2Usd: number;
+    dynamicBreakevenPriceUsd: number | null;
+    reconciliationDeltaUsd?: number;
+    reconciliationDriftUsd: number;
+  };
+  wacExits?: Array<{
+    exitId: string;
+    symbol: string;
+    sellFillId: string;
+    sellOrderId: string;
+    sellTradeId: string;
+    matchedQty: number;
+    wacUnitCostUsd: number;
+    sellPrice: number;
+    costBasisUsd: number;
+    grossProceedsUsd: number;
+    allocatedPoolBuyFeeUsd: number;
+    allocatedSellFeeUsd: number;
+    netRealizedPnlUsd: number;
+    poolQtyBefore: number;
+    poolQtyAfter: number;
+    sellTimestamp: number;
+    reconciliationDeltaUsd: number;
+  }>;
   slippagePercent?: number;
   worstCaseLossUsd?: number;
+  marketPriceAtCreation?: number;
+  isStopLimit?: boolean;
 
   status?: string;
   type?: 'TRADE' | 'HOLDING';
@@ -57,6 +144,7 @@ export interface Trade {
   disciplineNotes?: string;
   
   createdAt: number;
+  date?: string;
   filledAt?: number;
   closedAt?: number;
   slUpdatedAt?: number;
@@ -167,3 +255,20 @@ export interface OfflineAction {
   data?: any;
   timestamp: number;
 }
+
+export interface PriceAlert {
+  id: string;
+  userId: string;
+  symbol: string;
+  targetPrice: number;
+  condition: 'above' | 'below';
+  recurring: boolean;
+  isActive: boolean;
+  note?: string;
+  createdAt: number;
+  updatedAt?: number;
+  lastTriggeredAt?: number | null;
+  triggerCount?: number;
+  lastTriggeredPrice?: number | null;
+}
+

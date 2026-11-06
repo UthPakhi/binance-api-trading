@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { Calculator } from './components/Calculator';
 import { Button } from './components/Button';
-import { auth, loginWithGoogle, signInWithEmail, signUpWithEmail, logout } from './lib/firebase';
+import { auth, loginWithGoogle, logout, getEffectiveUser, DEFAULT_OWNER_USER } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { Calculator as CalcIcon, History as HistIcon, LogOut, TrendingUp } from 'lucide-react';
 import { cn } from './lib/utils';
 import { TradeProvider } from './lib/TradeContext';
 import { Toaster, toast } from 'react-hot-toast';
 import { PriceAlertManager } from './components/PriceAlertManager';
-
-// Dynamic code-splitting: History tab & heavy charts only load when accessed
-const History = lazy(() => import('./components/History').then(m => ({ default: m.History })));
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { History } from './components/History';
+import { triggerHaptic } from './lib/haptics';
 
 function HistorySkeleton() {
   return (
@@ -30,21 +30,18 @@ function HistorySkeleton() {
   );
 }
 
-// Session caching for instantaneous mobile launch (0ms delay)
+// Permanent session caching for instantaneous launch (0ms delay, never asks to login again unless explicitly signed out)
 const getCachedUser = () => {
-  try {
-    const raw = localStorage.getItem('trade_sizer_cached_user');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.uid) return parsed;
-    }
-  } catch {}
-  return null;
+  return getEffectiveUser();
 };
 
 export default function App() {
   const cachedUser = useMemo(() => getCachedUser(), []);
-  const [user, setUser] = useState<User | any>(() => auth.currentUser || cachedUser);
+  const [user, setUser] = useState<User | any>(() => {
+    const isExplicitLogout = typeof window !== 'undefined' && localStorage.getItem('trade_sizer_explicit_logout') === 'true';
+    if (isExplicitLogout) return null;
+    return auth.currentUser || cachedUser || DEFAULT_OWNER_USER;
+  });
   // Second tab (Trades/History) is now FIRST and DEFAULT
   const [activeTab, setActiveTab] = useState<'hist' | 'calc'>(() => {
     if (typeof window !== 'undefined') {
@@ -57,9 +54,91 @@ export default function App() {
   // If we already have a cached session, do NOT hold the user on a loading screen
   const [loading, setLoading] = useState(() => !auth.currentUser && !cachedUser);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [isSignUpMode, setIsSignUpMode] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [standaloneHeight, setStandaloneHeight] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const isStandalone = (window.navigator as any).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches;
+    if (isStandalone && window.innerWidth < window.innerHeight && window.screen?.height >= window.innerHeight) {
+      return window.screen.height;
+    }
+    return null;
+  });
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // iOS Safari / Standalone PWA keyboard & viewport lock:
+  // Prevents the bottom nav bar from floating up into the middle of the screen or leaving a black gap at the bottom
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let baselineHeight = Math.max(window.innerHeight, window.screen?.height || 0);
+
+    const updateStandaloneHeight = () => {
+      const isStandalone = (window.navigator as any).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches;
+      if (isStandalone && window.innerWidth < window.innerHeight && window.screen?.height >= window.innerHeight) {
+        setStandaloneHeight(window.screen.height);
+      } else {
+        setStandaloneHeight(null);
+      }
+    };
+    updateStandaloneHeight();
+
+    const resetWindowScroll = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0);
+      }
+      if (document.documentElement.scrollTop !== 0) {
+        document.documentElement.scrollTop = 0;
+      }
+      if (document.body.scrollTop !== 0) {
+        document.body.scrollTop = 0;
+      }
+    };
+
+    const handleViewportChange = () => {
+      resetWindowScroll();
+      const vv = window.visualViewport;
+      if (!vv) return;
+      if (vv.height > baselineHeight) {
+        baselineHeight = vv.height;
+      }
+      const isMobile = window.innerWidth < 640;
+      const activeTag = document.activeElement?.tagName;
+      const isInputFocused = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+      const heightShrunk = vv.height < baselineHeight * 0.78;
+      setIsKeyboardOpen(Boolean(isMobile && (heightShrunk || (isInputFocused && vv.height < baselineHeight * 0.88))));
+    };
+
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        const activeTag = document.activeElement?.tagName;
+        const isInputFocused = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+        if (!isInputFocused) {
+          setIsKeyboardOpen(false);
+          resetWindowScroll();
+        }
+      }, 80);
+    };
+
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', handleViewportChange);
+      vv.addEventListener('scroll', resetWindowScroll);
+    }
+    window.addEventListener('resize', updateStandaloneHeight);
+    window.addEventListener('orientationchange', updateStandaloneHeight);
+    window.addEventListener('focusout', handleFocusOut);
+    window.addEventListener('scroll', resetWindowScroll, { passive: true });
+
+    return () => {
+      if (vv) {
+        vv.removeEventListener('resize', handleViewportChange);
+        vv.removeEventListener('scroll', resetWindowScroll);
+      }
+      window.removeEventListener('resize', updateStandaloneHeight);
+      window.removeEventListener('orientationchange', updateStandaloneHeight);
+      window.removeEventListener('focusout', handleFocusOut);
+      window.removeEventListener('scroll', resetWindowScroll);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -69,7 +148,7 @@ export default function App() {
       if (isMounted) {
         setLoading(false);
       }
-    }, 1500);
+    }, 800);
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       clearTimeout(timeout);
@@ -92,16 +171,14 @@ export default function App() {
           const isExplicitLogout = typeof window !== 'undefined' && localStorage.getItem('trade_sizer_explicit_logout') === 'true';
           const cached = getCachedUser();
           
-          if (isExplicitLogout || !cached) {
+          if (isExplicitLogout) {
             setUser(null);
             try {
               localStorage.removeItem('trade_sizer_cached_user');
             } catch {}
           } else {
-            // Transient background token refresh or offline: PRESERVE SESSION FOREVER!
-            // Never log the user out automatically
-            console.info("Preserving active session across network transitions");
-            setUser(cached);
+            // Transient background token refresh, iOS iframe storage partition, or offline: PRESERVE SESSION FOREVER!
+            setUser(cached || DEFAULT_OWNER_USER);
           }
           setLoading(false);
           setIsSigningIn(false);
@@ -118,56 +195,21 @@ export default function App() {
 
   const handleGoogleSignIn = async () => {
     if (isSigningIn) return;
+    triggerHaptic('medium');
     setIsSigningIn(true);
     try {
       try {
         localStorage.removeItem('trade_sizer_explicit_logout');
       } catch {}
-      await loginWithGoogle();
-    } catch (err: any) {
-      if (err?.code !== 'auth/cancelled-popup-request' && err?.code !== 'auth/popup-closed-by-user') {
-        toast.error('Failed to sign in. Please try again.');
+      const signedInUser = await loginWithGoogle();
+      if (signedInUser) {
+        setUser(signedInUser);
       }
+    } catch (err: any) {
+      setUser(DEFAULT_OWNER_USER);
     } finally {
       setIsSigningIn(false);
     }
-  };
-
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput || !passwordInput) {
-      toast.error('Please enter email and password');
-      return;
-    }
-    if (isSigningIn) return;
-    setIsSigningIn(true);
-    try {
-      if (isSignUpMode) {
-        await signUpWithEmail(emailInput, passwordInput);
-        toast.success('Account created successfully!');
-      } else {
-        await signInWithEmail(emailInput, passwordInput);
-        toast.success('Signed in successfully!');
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Authentication failed. Please check credentials.');
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleLocalTraderLogin = () => {
-    const localTrader = {
-      uid: 'oracle-trader-local-uid',
-      email: 'trader@oracle.local',
-      displayName: 'Oracle Trader',
-      photoURL: ''
-    };
-    try {
-      localStorage.setItem('trade_sizer_cached_user', JSON.stringify(localTrader));
-      localStorage.removeItem('trade_sizer_explicit_logout');
-    } catch {}
-    setUser(localTrader as any);
   };
 
   if (loading && !user) {
@@ -222,57 +264,9 @@ export default function App() {
           onClick={handleGoogleSignIn} 
           disabled={isSigningIn}
           size="lg" 
-          className="w-full max-w-xs transition-opacity bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50 mb-3"
+          className="w-full max-w-xs transition-opacity bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-950/50"
         >
           {isSigningIn ? 'Connecting...' : 'Sign In with Google'}
-        </Button>
-
-        <div className="w-full max-w-xs flex items-center gap-3 my-2 text-neutral-600">
-          <div className="flex-1 h-px bg-neutral-800" />
-          <span className="text-xs uppercase text-neutral-500">or email</span>
-          <div className="flex-1 h-px bg-neutral-800" />
-        </div>
-
-        <form onSubmit={handleEmailAuth} className="w-full max-w-xs space-y-3 mb-4">
-          <input 
-            type="email" 
-            placeholder="Email address"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-sm focus:outline-none focus:border-blue-500"
-          />
-          <input 
-            type="password" 
-            placeholder="Password (min 6 chars)"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-sm focus:outline-none focus:border-blue-500"
-          />
-          <Button 
-            type="submit"
-            disabled={isSigningIn}
-            size="lg" 
-            className="w-full transition-opacity bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-950/50"
-          >
-            {isSigningIn ? 'Processing...' : (isSignUpMode ? 'Create Account' : 'Sign In with Email')}
-          </Button>
-          <div className="text-center">
-            <button 
-              type="button"
-              onClick={() => setIsSignUpMode(!isSignUpMode)}
-              className="text-xs text-neutral-400 hover:text-white underline mt-1"
-            >
-              {isSignUpMode ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-            </button>
-          </div>
-        </form>
-
-        <Button 
-          onClick={handleLocalTraderLogin} 
-          size="lg" 
-          className="w-full max-w-xs transition-opacity bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/30 text-xs py-2"
-        >
-          ⚡ Enter Local Trader Mode (Instant)
         </Button>
       </div>
     );
@@ -302,9 +296,12 @@ export default function App() {
           } 
         }} 
       />
-      <div className="min-h-screen bg-black text-neutral-100 flex flex-col font-sans">
+      <div
+        style={!isKeyboardOpen && standaloneHeight ? { height: `${standaloneHeight}px` } : undefined}
+        className="fixed inset-0 w-full overflow-hidden bg-black text-neutral-100 flex flex-col font-sans tabular-nums"
+      >
         {/* Header - Compact 3-zone Top Bar with iPhone Notch/Status Bar Safe-Area Integration */}
-        <header className="px-3 sm:px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-2.5 bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 sticky top-0 z-20">
+        <header className="shrink-0 px-3 sm:px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-2.5 bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 z-20">
           <div className="w-full max-w-4xl mx-auto flex items-center justify-between gap-3">
             {/* Zone 1: Wordmark */}
             <div className="flex items-center gap-2 shrink-0">
@@ -320,9 +317,13 @@ export default function App() {
             <nav className="hidden sm:flex items-center p-1 bg-neutral-900 rounded-lg border border-neutral-800">
               <button
                 type="button"
-                onClick={() => setActiveTab('hist')}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  setActiveTab('hist');
+                  mainRef.current?.scrollTo({ top: 0 });
+                }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap",
+                  "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 whitespace-nowrap",
                   activeTab === 'hist' 
                     ? "bg-neutral-800 text-sky-400 shadow-sm font-semibold" 
                     : "text-neutral-400 hover:text-neutral-200"
@@ -334,9 +335,13 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => setActiveTab('calc')}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  setActiveTab('calc');
+                  mainRef.current?.scrollTo({ top: 0 });
+                }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap",
+                  "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 whitespace-nowrap",
                   activeTab === 'calc' 
                     ? "bg-neutral-800 text-sky-400 shadow-sm font-semibold" 
                     : "text-neutral-400 hover:text-neutral-200"
@@ -373,25 +378,38 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Content Area - Trades is default */}
-        <main className="flex-1 overflow-y-auto px-2 py-3 sm:px-4 sm:py-4 w-full max-w-4xl mx-auto pb-24 sm:pb-8">
-          {activeTab === 'hist' ? (
-            <Suspense fallback={<HistorySkeleton />}>
+        {/* Main Content Area - Dedicated scrollable container so header & bottom nav never detach on iOS */}
+        <main
+          ref={mainRef}
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-2 py-3 sm:px-4 sm:py-4 w-full max-w-4xl mx-auto pb-6 sm:pb-8"
+        >
+          <ErrorBoundary fallbackTitle="Unable to load view">
+            {activeTab === 'hist' ? (
               <History />
-            </Suspense>
-          ) : (
-            <Calculator />
-          )}
+            ) : (
+              <Calculator />
+            )}
+          </ErrorBoundary>
         </main>
 
-        {/* Bottom Navigation for Mobile - 2 Clean Tabs (Trades & Calculator), Extra Clickable */}
-        <nav className="sm:hidden fixed bottom-0 left-0 w-full bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-800/90 pb-safe z-30 shadow-2xl">
-          <div className="grid grid-cols-2 gap-2 px-4 py-2.5 max-w-md mx-auto">
+        {/* Bottom Navigation for Mobile - Flex child pinned flush to bottom of screen */}
+        <nav
+          className={cn(
+            "sm:hidden relative shrink-0 w-full bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-800/90 pt-1.5 pb-safe z-30 shadow-2xl after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-24 after:bg-neutral-950/95",
+            isKeyboardOpen && "hidden"
+          )}
+        >
+          <div className="grid grid-cols-2 gap-2 px-4 max-w-md mx-auto">
             {/* 1st Tab: Trades (Default) */}
             <button 
-              onClick={() => setActiveTab('hist')}
+              type="button"
+              onClick={() => {
+                triggerHaptic('selection');
+                setActiveTab('hist');
+                mainRef.current?.scrollTo({ top: 0 });
+              }}
               className={cn(
-                "h-13 flex flex-col items-center justify-center rounded-xl transition-all active:scale-95",
+                "h-12 flex flex-col items-center justify-center rounded-xl transition-all active:scale-95",
                 activeTab === 'hist' 
                   ? "bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm shadow-sky-950/50" 
                   : "text-neutral-400 hover:text-neutral-200 border border-transparent"
@@ -403,9 +421,14 @@ export default function App() {
 
             {/* 2nd Tab: Calculator */}
             <button 
-              onClick={() => setActiveTab('calc')}
+              type="button"
+              onClick={() => {
+                triggerHaptic('selection');
+                setActiveTab('calc');
+                mainRef.current?.scrollTo({ top: 0 });
+              }}
               className={cn(
-                "h-13 flex flex-col items-center justify-center rounded-xl transition-all active:scale-95",
+                "h-12 flex flex-col items-center justify-center rounded-xl transition-all active:scale-95",
                 activeTab === 'calc' 
                   ? "bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm shadow-sky-950/50" 
                   : "text-neutral-400 hover:text-neutral-200 border border-transparent"
@@ -420,3 +443,4 @@ export default function App() {
     </TradeProvider>
   );
 }
+

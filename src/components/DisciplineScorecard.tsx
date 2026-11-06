@@ -35,7 +35,11 @@ export function DisciplineScorecard({ stats, viewMode = 'DOLLAR', privacyMode = 
   const formatPnLValue = (pnl: number, r: number) => {
     if (privacyMode || viewMode === 'ZEN') return '••••••';
     if (viewMode === 'R_MULTIPLE') return `${r >= 0 ? '+' : ''}${r.toFixed(2)}R`;
-    if (viewMode === 'PERCENT') return `${r >= 0 ? '+' : ''}${r.toFixed(1)}R`;
+    if (viewMode === 'PERCENT') {
+      const totalDevAndPlan = Math.abs(planned.totalPnL) + Math.abs(deviated.totalPnL);
+      const pct = totalDevAndPlan > 0 ? ((pnl / totalDevAndPlan) * 100) : 0;
+      return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+    }
     return `${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}`;
   };
 

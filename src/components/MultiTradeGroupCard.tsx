@@ -5,6 +5,7 @@ import {
   TradeGroupItem, formatPrice, calculateLivePnL, calculateLivePnLPercent, 
   formatCurrencyPrivacy 
 } from '../lib/tradeUtils';
+import { triggerHaptic } from '../lib/haptics';
 
 interface MultiTradeGroupCardProps {
   key?: React.Key;
@@ -13,6 +14,7 @@ interface MultiTradeGroupCardProps {
   privacyMode: boolean;
   viewMode?: PnlViewMode;
   renderChildTradeCard: (trade: Trade) => React.ReactNode;
+  onMergeAll?: (group: TradeGroupItem) => void;
 }
 
 export function MultiTradeGroupCard({
@@ -20,17 +22,22 @@ export function MultiTradeGroupCard({
   livePrice,
   privacyMode,
   viewMode = 'DOLLAR',
-  renderChildTradeCard
+  renderChildTradeCard,
+  onMergeAll
 }: MultiTradeGroupCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const { symbol, trades, totalCoins, blendedEntry, totalInvested, totalRisk, isAlpha } = group;
 
-  // Calculate combined live PnL
+  // Calculate combined live PnL and banked profit
   let totalLivePnL = 0;
-  if (livePrice && livePrice > 0) {
-    for (const t of trades) {
+  let totalBankedProfit = 0;
+  for (const t of trades) {
+    if (livePrice && livePrice > 0) {
       totalLivePnL += calculateLivePnL(t, livePrice);
+    }
+    if (t.realizedProfitUsd) {
+      totalBankedProfit += t.realizedProfitUsd;
     }
   }
 
@@ -38,10 +45,13 @@ export function MultiTradeGroupCard({
   const isProfit = totalLivePnL >= 0;
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 rounded-xl overflow-hidden shadow-sm transition-all">
+    <div className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 rounded-xl overflow-hidden shadow-sm transition-all tabular-nums">
       {/* Group Summary Header */}
       <div 
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          triggerHaptic('selection');
+          setIsExpanded(!isExpanded);
+        }}
         className="p-3 cursor-pointer select-none bg-neutral-900 hover:bg-neutral-850 transition-colors flex flex-col gap-2.5"
       >
         <div className="flex items-center justify-between">
@@ -52,16 +62,30 @@ export function MultiTradeGroupCard({
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="text-sm font-bold text-white font-mono">{symbol}</h3>
-                <span className="text-[9px] bg-blue-500/20 text-blue-300 font-semibold px-1.5 py-0.2 rounded border border-blue-500/30">
+                <span className="text-[9px] bg-blue-500/20 text-blue-300 font-semibold px-1.5 py-0.2 rounded border border-blue-500/30 tabular-nums">
                   {trades.length} Stacked
                 </span>
+                {onMergeAll && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('medium');
+                      onMergeAll(group);
+                    }}
+                    className="text-[9px] bg-blue-500/20 hover:bg-blue-500/30 text-sky-300 font-semibold px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1 transition-all active:scale-95"
+                    title="Merge all stacked trades for this coin into 1 single trade"
+                  >
+                    Merge into 1 Trade
+                  </button>
+                )}
                 {isAlpha && (
                   <span className="text-[9px] bg-purple-500/20 text-purple-300 font-semibold px-1.5 py-0.2 rounded border border-purple-500/30">
                     ALPHA
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-neutral-400 font-mono mt-0.5">
+              <div className="text-[10px] text-neutral-400 font-mono tabular-nums mt-0.5">
                 Blended: <strong className="text-neutral-200 font-semibold">{formatPrice(blendedEntry, viewMode !== 'PERCENT')}</strong> · Total: <span className="text-neutral-300">{totalCoins.toLocaleString()} coins</span>
               </div>
             </div>
@@ -72,7 +96,7 @@ export function MultiTradeGroupCard({
               <span className="text-[9px] uppercase tracking-wider font-semibold text-neutral-500">
                 Combined PnL
               </span>
-              <div className={`text-xs sm:text-sm font-bold font-mono flex items-center gap-1 ${
+              <div className={`text-xs sm:text-sm font-bold font-mono tabular-nums flex items-center gap-1 ${
                 isProfit ? 'text-sky-400' : 'text-slate-400'
               }`}>
                 {privacyMode || viewMode === 'ZEN' ? (
@@ -107,7 +131,7 @@ export function MultiTradeGroupCard({
         </div>
 
         {/* Quick Stack Metric Bar */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-800/70 text-[11px] font-mono">
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-800/70 text-[11px] font-mono tabular-nums">
           <div className="bg-neutral-950/60 p-1.5 rounded-md border border-neutral-800/50">
             <span className="text-[9px] text-neutral-500 uppercase block">Invested</span>
             <span className="text-blue-300 font-bold">
@@ -139,7 +163,7 @@ export function MultiTradeGroupCard({
             <span className="text-neutral-500 lowercase">distinct stop loss &amp; targets</span>
           </div>
           {trades.map((trade, idx) => (
-            <div key={trade.id || idx} className="relative pl-1.5 border-l-2 border-blue-500/40">
+            <div key={`child-${trade.id || idx}-${idx}`} className="relative pl-1.5 border-l-2 border-blue-500/40">
               {renderChildTradeCard(trade)}
             </div>
           ))}

@@ -2,15 +2,20 @@ import React from 'react';
 import { Button } from './Button';
 import { 
   X, Calendar, Clock, DollarSign, Target, Shield, AlertTriangle, 
-  Receipt, Share2, Tag, FileText, ExternalLink, ArrowRight, CheckCircle2, Brain, Zap 
+  Receipt, Share2, Tag, FileText, ExternalLink, ArrowRight, CheckCircle2, Brain, Zap, Scissors 
 } from 'lucide-react';
 import { Trade, PnlViewMode } from '../types';
 import { 
-  formatPrice, getTradeIsLong, isAlphaTradeOrSymbol, getTradeCoins, 
+  formatPrice, formatPkr, getTradeIsLong, isAlphaTradeOrSymbol, getTradeCoins, 
   getTradeConsolidatedFees, calculateBlendedBreakeven, DISCIPLINE_TAGS,
   getTradeRiskFramework, calculateNormalizedRMultiple,
-  getTradeExitPrice, parseTradeNotesLineByLine
+  getTradeExitPrice, parseTradeNotesLineByLine, parseStructuredTradeNotes, getTradeExecutionNotes,
+  getTradeBankedProfit, calculateRemainingCoins,
+  formatBankedProfitDisplay, formatExitPnlDisplay, formatNoteLineForView, formatTradeDuration,
+  getTradeCostBasisSummary, getTradeEntryPriceByMethod, getTradeRealizedPnlByMethod
 } from '../lib/tradeUtils';
+import { dFormat8 } from '../lib/financialMath';
+import { useTradeContext } from '../lib/TradeContext';
 
 interface TradeDetailDrawerProps {
   trade: Trade;
@@ -35,27 +40,27 @@ export function TradeDetailDrawer({
   const isAlpha = trade.market === 'ALPHA' || trade.isAlpha || isAlphaTradeOrSymbol(trade);
   const isClosed = Boolean(trade.closedAt || trade.status === 'CLOSED_MANUAL' || trade.status === 'HIT_SL' || trade.status === 'HIT_TP3');
   
+  const { pkrRate } = useTradeContext();
+  const currentPkrRate = isClosed 
+    ? ((trade.pkrRate && trade.pkrRate !== 285) ? trade.pkrRate : pkrRate)
+    : pkrRate;
+  
   const coins = getTradeCoins(trade);
-  const invested = trade.totalBuyUsd || (coins * (trade.entryPrice || 0));
+  const activeEntryPrice = getTradeEntryPriceByMethod(trade, 'WAC') || trade.entryPrice || 0;
+  const invested = trade.totalBuyUsd || (coins * activeEntryPrice);
   const fees = getTradeConsolidatedFees(trade);
-  const beInfo = calculateBlendedBreakeven(trade);
-  const framework = getTradeRiskFramework(trade);
+  const beInfo = calculateBlendedBreakeven(trade, 'WAC');
+  const framework = getTradeRiskFramework(trade, undefined, 'WAC');
+  const bankedInfo = getTradeBankedProfit(trade);
+  const remainingCoins = calculateRemainingCoins(trade);
 
   // Time duration
-  let durationStr = 'Active';
-  if (trade.closedAt && trade.createdAt) {
-    const diffMs = trade.closedAt - trade.createdAt;
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    const remHours = hours % 24;
-    durationStr = days > 0 ? `${days}d ${remHours}h` : `${hours}h`;
-  }
+  const durationStr = formatTradeDuration(trade) || (isClosed ? 'Closed' : 'Active');
 
-  const pnlUsd = trade.realizedProfitUsd !== undefined 
-    ? trade.realizedProfitUsd 
-    : (trade.exitPrice && trade.entryPrice ? ((trade.exitPrice - trade.entryPrice) * coins - fees.totalFees) : 0);
+  const pnlUsd = getTradeRealizedPnlByMethod(trade, 'WAC', false);
+  const pnlExact8Usd = getTradeRealizedPnlByMethod(trade, 'WAC', true);
   const isWin = pnlUsd >= 0;
-  const normR = calculateNormalizedRMultiple(pnlUsd, trade);
+  const normR = calculateNormalizedRMultiple(pnlExact8Usd, trade, undefined, 'WAC');
   const rMultiple = normR.r.toFixed(2);
   const isNormalizedR = normR.isNormalized;
 
@@ -123,6 +128,11 @@ export function TradeDetailDrawer({
                         ? `${isWin ? '+' : ''}${trade.entryPrice && trade.exitPrice ? (((trade.exitPrice - trade.entryPrice) / trade.entryPrice) * (isLong ? 100 : -100)).toFixed(2) : 0}%`
                         : `${isWin ? '+' : ''}$${pnlUsd.toFixed(2)} USD`}
                     </span>
+                    {viewMode !== 'PERCENT' && (
+                      <span className="text-sm font-semibold font-mono text-neutral-300">
+                        ({formatPkr(pnlUsd * currentPkrRate)})
+                      </span>
+                    )}
                     {rMultiple && (
                       <span className={`text-xs px-2 py-0.5 rounded font-bold ${
                         isWin ? 'bg-blue-500/20 text-sky-300 border border-blue-500/30' : 'bg-slate-800/60 text-slate-300 border border-slate-700/50'
@@ -220,12 +230,12 @@ export function TradeDetailDrawer({
             </div>
           </div>
 
-          {/* Institutional Risk & Exposure Framework */}
+          {/* Risk & Position Summary */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-blue-400" />
-                Risk &amp; Downside Architecture
+                Risk &amp; Position Summary
               </span>
               {framework.isUnprotected ? (
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-950/60 border border-amber-800/80 px-2 py-0.5 rounded flex items-center gap-1">
@@ -240,7 +250,7 @@ export function TradeDetailDrawer({
               ) : (
                 <span className="text-[10px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800/80 px-2 py-0.5 rounded flex items-center gap-1">
                   <Shield className="w-3 h-3 text-blue-400" />
-                  Hard Stop Active
+                  Stop Loss Active
                 </span>
               )}
             </div>
@@ -352,6 +362,79 @@ export function TradeDetailDrawer({
             </div>
           </div>
 
+          {/* Scaled Out Along The Way / Profit Banked / Loss Cut Card */}
+          {(bankedInfo.hasBankedProfit || bankedInfo.hasLossCut) && (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1.5">
+                {bankedInfo.hasBankedProfit ? <Target className="w-3.5 h-3.5 text-blue-400" /> : <Scissors className="w-3.5 h-3.5 text-slate-400" />}
+                {bankedInfo.hasBankedProfit ? 'Profit Banked Along The Way' : 'Loss Cut Along The Way'}
+              </span>
+              <div className={`p-3.5 rounded-xl border flex flex-col gap-2 font-mono text-xs ${
+                bankedInfo.hasBankedProfit ? 'bg-blue-950/30 border-blue-800/60' : 'bg-neutral-900 border-neutral-700/60'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-400">Total Banked:</span>
+                  <span className={`text-base font-bold ${bankedInfo.hasBankedProfit ? 'text-blue-300' : 'text-slate-300'}`}>
+                    {formatBankedProfitDisplay(trade, bankedInfo, viewMode, trade.portfolioSize)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-neutral-400 text-[11px]">
+                  <span>Coins Sold:</span>
+                  <span className="text-white font-semibold">
+                    {(trade.soldCoins || 0).toLocaleString()} coins ({bankedInfo.soldPercent}%)
+                  </span>
+                </div>
+                {!isClosed && (
+                  <div className="flex items-center justify-between text-neutral-400 text-[11px]">
+                    <span>Remaining Held:</span>
+                    <span className="text-blue-300 font-semibold">
+                      {remainingCoins.toLocaleString()} coins ({Math.max(0, 100 - bankedInfo.soldPercent)}%)
+                    </span>
+                  </div>
+                )}
+                {viewMode !== 'PERCENT' && (
+                  <div className="flex items-center justify-between text-neutral-400 text-[11px] pt-1.5 border-t border-neutral-800/80">
+                    <span>PKR Equivalent:</span>
+                    <span className="text-neutral-200">
+                      {formatPkr(bankedInfo.bankedAmountUsd * currentPkrRate)}
+                    </span>
+                  </div>
+                )}
+                {bankedInfo.exits && bankedInfo.exits.length > 0 && (
+                  <div className="pt-2 border-t border-neutral-800/80 flex flex-col gap-1.5">
+                    <span className="text-[10px] uppercase font-semibold text-neutral-400">Exits at each price:</span>
+                    <div className="grid grid-cols-1 gap-1">
+                      {bankedInfo.exits.map((ex, exIdx) => {
+                        const isProf = (ex.profitUsd || 0) >= 0;
+                        return (
+                          <div 
+                            key={exIdx} 
+                            className={`p-2 rounded-lg border flex items-center justify-between text-[11px] ${
+                              isProf ? 'bg-blue-950/40 border-blue-500/30 text-blue-200' : 'bg-neutral-900 border-neutral-700/60 text-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>{isProf ? '🎯' : '✂️'}</span>
+                              <span className="font-bold">@{formatPrice(ex.price || 0, viewMode !== 'PERCENT')}</span>
+                              {ex.coins && (
+                                <span className="text-neutral-400 text-[10px]">
+                                  ({ex.coins.toLocaleString()} coins)
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <span>{formatExitPnlDisplay(ex, viewMode, trade.entryPrice)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Fee Drag & Breakeven */}
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1.5">
@@ -436,34 +519,81 @@ export function TradeDetailDrawer({
               )}
               {trade.binanceOrderId && (
                 <div className="flex justify-between items-center pt-2 border-t border-neutral-800">
-                  <span className="text-neutral-500">Binance Order ID:</span>
-                  <span className="text-neutral-400 font-mono">{trade.binanceOrderId}</span>
+                  <span className="text-neutral-500">Order Reference:</span>
+                  <span className="text-neutral-400 font-mono">#{trade.binanceOrderId}</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Notes */}
-          {trade.notes && (() => {
-            const lines = parseTradeNotesLineByLine(trade.notes);
+          {/* Subtle Buy & Sell Level Notes */}
+          {(() => {
+            const items = getTradeExecutionNotes(trade);
 
-            if (lines.length === 0) return null;
+            if (items.length === 0) return null;
 
             return (
-              <div className="flex flex-col gap-2">
-                <span className="text-xs uppercase font-semibold text-neutral-400 tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-blue-400" />
-                  Journal Notes &amp; Activity Log
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] uppercase font-medium text-neutral-500 tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-neutral-400" />
+                    Trade Notes (Buys &amp; Sells)
+                  </span>
+                  {(bankedInfo.hasBankedProfit || bankedInfo.hasLossCut) && (
+                    <span className={`text-[10px] font-medium font-mono px-1.5 py-0.2 rounded ${
+                      bankedInfo.hasBankedProfit ? 'bg-blue-500/15 text-blue-300' : 'bg-neutral-800 text-slate-300 border border-neutral-700'
+                    }`}>
+                      {bankedInfo.hasBankedProfit 
+                        ? `${formatBankedProfitDisplay(trade, bankedInfo, viewMode, trade.portfolioSize)} Banked` 
+                        : `${formatBankedProfitDisplay(trade, bankedInfo, viewMode, trade.portfolioSize)} Loss Cut`}
+                    </span>
+                  )}
                 </span>
-                <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 text-xs text-neutral-300 flex flex-col gap-1.5 font-mono">
-                  {lines.map((line, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <span className="text-blue-400/80 mt-0.5 select-none text-[10px]">▪</span>
-                      <span className="leading-snug break-words flex-1 text-[11px] sm:text-xs">
-                        {line}
-                      </span>
-                    </div>
-                  ))}
+                <div className="bg-neutral-950/60 px-3 py-2 rounded-xl border border-neutral-800/60 text-[11px] flex flex-col gap-1 font-mono">
+                  {items.map((item, idx) => {
+                    const isBuy = item.type === 'BUY_FILL';
+                    const isProfit = item.type === 'PROFIT_BANKED';
+                    const isLoss = item.type === 'LOSS_CUT';
+                    return (
+                      <div 
+                        key={idx} 
+                        className="flex items-center justify-between gap-2 py-0.5 text-neutral-400"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          {isBuy ? (
+                            <span className="text-[9px] uppercase font-semibold px-1 py-0.2 rounded bg-emerald-950/40 text-emerald-400/90 border border-emerald-800/40 shrink-0">
+                              Buy
+                            </span>
+                          ) : (isProfit || isLoss) ? (
+                            <span className={`text-[9px] uppercase font-semibold px-1 py-0.2 rounded shrink-0 ${
+                              isProfit
+                                ? 'bg-sky-950/40 text-sky-400/90 border border-sky-800/40'
+                                : 'bg-neutral-800/80 text-slate-400 border border-neutral-700/60'
+                            }`}>
+                              Sell
+                            </span>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px] shrink-0 select-none">▪</span>
+                          )}
+                          <span className={`leading-tight break-words text-[11px] ${
+                            isProfit || isLoss ? 'text-neutral-300' : 'text-neutral-400'
+                          }`}>
+                            {formatNoteLineForView(item, viewMode, trade)}
+                          </span>
+                        </div>
+                        {isProfit && item.profitUsd !== undefined && (
+                          <span className="text-[10px] font-medium text-sky-400/90 shrink-0">
+                            {formatExitPnlDisplay(item, viewMode, trade.entryPrice)}
+                          </span>
+                        )}
+                        {isLoss && item.profitUsd !== undefined && (
+                          <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                            {formatExitPnlDisplay(item, viewMode, trade.entryPrice)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
