@@ -2563,6 +2563,25 @@ export function History() {
           <Button variant="ghost" size="icon" onClick={refreshTrades} className="text-neutral-500 hover:text-blue-400 h-8 w-8" title="Refresh Trades">
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              triggerHaptic('selection');
+              const allCollapsed = Object.values(collapsedSections).every(Boolean);
+              const nextVal = !allCollapsed;
+              const nextState = { ACTIVE: nextVal, HOLDING: nextVal, PENDING: nextVal, CLOSED: nextVal };
+              setCollapsedSections(nextState);
+              try {
+                localStorage.setItem('history_collapsed_sections', JSON.stringify(nextState));
+              } catch {}
+              toast.success(nextVal ? 'Collapsed all sections' : 'Expanded all sections');
+            }}
+            className="text-neutral-500 hover:text-blue-400 h-8 w-8"
+            title="Expand / Collapse All Sections"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 

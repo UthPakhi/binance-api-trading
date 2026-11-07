@@ -1945,6 +1945,28 @@ setInterval(async () => {
   let cachedExchangeSymbols: string[] | null = null;
   let lastSymbolsFetch = 0;
 
+  let cachedAlphaTokens: any[] = [];
+  let lastAlphaFetch = 0;
+
+  async function fetchBinanceAlphaTokens() {
+    const now = Date.now();
+    if (cachedAlphaTokens.length > 0 && now - lastAlphaFetch < 30000) return cachedAlphaTokens;
+    try {
+      const res = await fetch("https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list").then(r => r.json()).catch(() => null);
+      if (res && res.data) {
+        let list: any[] = [];
+        if (Array.isArray(res.data)) list = res.data;
+        else if (res.data.tokens && Array.isArray(res.data.tokens)) list = res.data.tokens;
+        else if (res.data.list && Array.isArray(res.data.list)) list = res.data.list;
+        if (list.length > 0) {
+          cachedAlphaTokens = list;
+          lastAlphaFetch = now;
+        }
+      }
+    } catch (e) {}
+    return cachedAlphaTokens;
+  }
+
   app.get("/api/exchange/symbols", async (req, res) => {
     try {
       const now = Date.now();
@@ -1952,9 +1974,10 @@ setInterval(async () => {
         return res.json({ status: "success", symbols: cachedExchangeSymbols });
       }
 
-      const [spotRes, futRes] = await Promise.all([
+      const [spotRes, futRes, alphaTokens] = await Promise.all([
         fetch("https://api.binance.com/api/v3/exchangeInfo").then(r => r.json()).catch(() => null),
-        fetch("https://fapi.binance.com/fapi/v1/exchangeInfo").then(r => r.json()).catch(() => null)
+        fetch("https://fapi.binance.com/fapi/v1/exchangeInfo").then(r => r.json()).catch(() => null),
+        fetchBinanceAlphaTokens()
       ]);
 
       const symSet = new Set<string>();
@@ -1969,20 +1992,33 @@ setInterval(async () => {
           .forEach((s: any) => symSet.add(s.symbol));
       }
 
-      ['FARTCOINUSDT', 'AI16ZUSDT', 'VIRTUALUSDT', 'SWARMSUSDT', 'GRIFFAINUSDT', 'ACTUSDT', 'GOATUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SOLUSDC', 'BTCUSDC', 'ETHUSDC'].forEach(s => symSet.add(s));
+      if (Array.isArray(alphaTokens)) {
+        for (const t of alphaTokens) {
+          if (t.symbol) {
+            const symClean = t.symbol.toUpperCase().trim();
+            symSet.add(symClean);
+            symSet.add(`${symClean}USDT`);
+          }
+          if (t.alphaId) {
+            symSet.add(`${t.alphaId.toUpperCase()}USDT`);
+          }
+        }
+      }
+
+      ['IRYSUSDT', 'FARTCOINUSDT', 'AI16ZUSDT', 'VIRTUALUSDT', 'SWARMSUSDT', 'GRIFFAINUSDT', 'ACTUSDT', 'GOATUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SOLUSDC', 'BTCUSDC', 'ETHUSDC'].forEach(s => symSet.add(s));
 
       if (symSet.size > 0) {
         cachedExchangeSymbols = Array.from(symSet);
         lastSymbolsFetch = now;
       } else if (!cachedExchangeSymbols) {
-        cachedExchangeSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SOLUSDC', 'BTCUSDC', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'TAOUSDT', 'SAGAUSDT', 'STGUSDT', 'CFGUSDT', 'NIGHTUSDT', 'ZECUSDT', 'FILUSDT', 'ORCAUSDT', 'HOMEUSDT', 'FARTCOINUSDT', 'AI16ZUSDT', 'VIRTUALUSDT'];
+        cachedExchangeSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SOLUSDC', 'BTCUSDC', 'BNBUSDT', 'XRPUSDT', 'IRYSUSDT', 'FARTCOINUSDT', 'AI16ZUSDT', 'VIRTUALUSDT'];
       }
 
       res.json({ status: "success", symbols: cachedExchangeSymbols });
     } catch (e: any) {
       res.json({
         status: "success",
-        symbols: cachedExchangeSymbols || ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SOLUSDC', 'BTCUSDC', 'TAOUSDT', 'SAGAUSDT', 'FARTCOINUSDT']
+        symbols: cachedExchangeSymbols || ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SOLUSDC', 'BTCUSDC', 'IRYSUSDT', 'FARTCOINUSDT']
       });
     }
   });
@@ -2036,6 +2072,34 @@ setInterval(async () => {
           }
         }
 
+        // 3. Try Official Binance Alpha klines (e.g. ALPHA_479USDT for IRYS)
+        const alphaTokens = await fetchBinanceAlphaTokens();
+        let alphaSymbolMatch = '';
+        const cleanBase = rawSym.replace(/USDT$|USDC$|BUSD$|FDUSD$/, '');
+        for (const t of alphaTokens) {
+          if (t.symbol && t.symbol.toUpperCase() === cleanBase && t.alphaId) {
+            alphaSymbolMatch = `${t.alphaId.toUpperCase()}USDT`;
+            break;
+          }
+        }
+        if (!alphaSymbolMatch && rawSym.startsWith('ALPHA_')) {
+          alphaSymbolMatch = sym;
+        }
+
+        if (alphaSymbolMatch) {
+          const alphaKlinesUrl = `https://www.binance.com/bapi/defi/v1/public/alpha-trade/klines?symbol=${alphaSymbolMatch}&interval=${interval}&limit=${limit}${timeParams}`;
+          const alphaResp = await fetch(alphaKlinesUrl).catch(() => null);
+          if (alphaResp && alphaResp.ok) {
+            const alphaData = await alphaResp.json();
+            if (alphaData && alphaData.data && Array.isArray(alphaData.data) && alphaData.data.length > 0) {
+              return alphaData.data;
+            }
+            if (Array.isArray(alphaData) && alphaData.length > 0) {
+              return alphaData;
+            }
+          }
+        }
+
         return null;
       };
 
@@ -2047,6 +2111,112 @@ setInterval(async () => {
       res.json({ status: "success", klines: klines || [] });
     } catch (err: any) {
       res.json({ status: "success", klines: [] });
+    }
+  });
+
+  app.post("/api/exchange/correct-irys", async (req, res) => {
+    try {
+      if (!serverDb) {
+        return res.status(400).json({ status: "error", message: "Server Firestore not initialized" });
+      }
+      const tradesRef = collection(serverDb, "trades");
+      const snap = await getDocs(tradesRef);
+      let targetDocId: string | null = null;
+
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.symbol && data.symbol.toUpperCase().includes('IRYS')) {
+          targetDocId = d.id;
+          break;
+        }
+      }
+
+      const irysPayload = {
+        symbol: "IRYSUSDT",
+        market: "ALPHA",
+        isAlpha: true,
+        type: "TRADE",
+        status: "HIT_SL",
+        entryPrice: 0.02390867,
+        stopLoss: 0.021,
+        takeProfit1: 0.028,
+        takeProfit2: 0.032,
+        takeProfit3: 0.038,
+        positionSizeCoins: 7947.32,
+        soldCoins: 7946.52,
+        totalBuyUsd: 190.00,
+        realizedProfitUsd: -23.48,
+        feeUsd: 0.58,
+        totalProfitPkr: -23.48 * 283.89,
+        pkrRate: 283.89,
+        closedAt: Date.parse('2026-11-01T20:25:00Z'),
+        createdAt: Date.parse('2026-10-31T16:32:26Z'),
+        updatedAt: Date.now(),
+        notes: "Buy 1: 5,866.28 IRYS @ $0.02387 (2026-10-31 16:32)\nBuy 2: 2,081.04 IRYS @ $0.02403 (2026-10-31 16:33)\nStop Loss Limit / Sell @ $0.02100 (2026-11-01 20:25) - HIT SL"
+      };
+
+      if (targetDocId) {
+        await updateDoc(doc(serverDb, "trades", targetDocId), irysPayload);
+      } else {
+        await setDoc(doc(serverDb, "trades", `irys_alpha_corrected_${Date.now()}`), irysPayload);
+      }
+
+      res.json({ status: "success", message: "IRYS trade successfully corrected to match Binance Alpha order history." });
+    } catch (e: any) {
+      res.status(500).json({ status: "error", message: e.message });
+    }
+  });
+
+  app.post("/api/exchange/correct-win", async (req, res) => {
+    try {
+      if (!serverDb) {
+        return res.status(400).json({ status: "error", message: "Server Firestore not initialized" });
+      }
+      const tradesRef = collection(serverDb, "trades");
+      const snap = await getDocs(tradesRef);
+      let targetDocId: string | null = null;
+
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.symbol && data.symbol.toUpperCase().includes('WIN')) {
+          targetDocId = d.id;
+          break;
+        }
+      }
+
+      const winPayload = {
+        symbol: "WINUSDT",
+        market: "SPOT",
+        isAlpha: false,
+        type: "TRADE",
+        status: "HIT_TP3",
+        entryPrice: 0.00006642,
+        stopLoss: 0.000061,
+        takeProfit1: 0.000068,
+        takeProfit2: 0.000070,
+        takeProfit3: 0.000072,
+        positionSizeCoins: 1565806,
+        soldCoins: 1564240,
+        totalBuyUsd: 104.00,
+        realizedProfitUsd: 0.38,
+        feeUsd: 0.21,
+        totalProfitPkr: 0.38 * 283.89,
+        pkrRate: 283.89,
+        closedAt: Date.parse('2026-10-30T01:43:06Z'),
+        createdAt: Date.parse('2026-10-26T13:49:36Z'),
+        updatedAt: Date.now(),
+        notes: "Buy 1: 656,716 WIN @ $0.000067 (2026-10-26 13:49)\nBuy 2: 909,090 WIN @ $0.000066 (2026-10-26 14:13)\nLimit / Sell @ $0.00006673 (2026-10-30 01:43) - HIT TP3"
+      };
+
+      if (targetDocId) {
+        await updateDoc(doc(serverDb, "trades", targetDocId), winPayload);
+      } else {
+        await setDoc(doc(serverDb, "trades", `win_spot_corrected_${Date.now()}`), winPayload);
+      }
+
+      res.json({ status: "success", message: "WIN trade successfully corrected to match Binance Spot order history." });
+    } catch (e: any) {
+      res.status(500).json({ status: "error", message: e.message });
     }
   });
 

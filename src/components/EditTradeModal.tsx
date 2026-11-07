@@ -238,7 +238,8 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
 
   const handleSave = async () => {
     if (coins === 0 || totalBuy === 0) return;
-    if (!isPctValid) {
+    const isClosingStatus = ['CLOSED_MANUAL', 'HIT_SL', 'CLOSED_BREAK_EVEN', 'BREAK_EVEN', 'HIT_TP3'].includes(status);
+    if (!isPctValid && !isClosingStatus && (t1 > 0 || t2 > 0 || t3 > 0)) {
       toast.error("Total sell percentage must be exactly 100%.");
       return;
     }
@@ -256,9 +257,6 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
     setIsSaving(true);
     try {
       let finalStatus = status;
-      if (trade.status === 'PENDING') {
-        finalStatus = 'PENDING';
-      }
       let finalRealized = parseFloat(realizedProfit) || 0;
       if (!t1 && !t2 && !t3 && (status === 'HIT_TP1' || status === 'HIT_TP2' || status === 'HIT_TP3')) {
         finalStatus = 'ACTIVE';
@@ -307,12 +305,12 @@ export function EditTradeModal({ trade, onClose }: { trade: Trade; onClose: () =
         market: trade.market || (isAlpha ? 'ALPHA' : 'SPOT'),
         isAlpha: isAlpha,
         realizedProfitUsd: finalRealized,
-        soldCoins: parseFloat(soldCoinsInput) || 0,
+        soldCoins: parseFloat(soldCoinsInput) || coins,
         notes: notesInput.trim() || null,
         notifiedMilestones: updatedNotified,
         updatedAt: now,
         ...(stop > 0 ? { slUpdatedAt: now } : {}),
-        ...(['ACTIVE', 'PARTIAL_EXIT', 'PENDING'].includes(finalStatus) ? { closedAt: null } : {})
+        ...(['ACTIVE', 'PARTIAL_EXIT', 'PENDING'].includes(finalStatus) ? { closedAt: null } : { closedAt: trade.closedAt || now })
       };
       await updateDoc(doc(db, 'trades', trade.id!), updatedTrade);
       onClose();

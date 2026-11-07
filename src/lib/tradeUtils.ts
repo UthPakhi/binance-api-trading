@@ -1213,6 +1213,7 @@ export const isBinanceLimitOrder = (trade: Partial<Trade>): boolean => {
 export const isBinanceLinkedTrade = (trade: Partial<Trade>): boolean => {
   if (!trade) return false;
   if (trade.isDemo) return false;
+  if (trade.market === 'ALPHA' || isAlphaTradeOrSymbol(trade)) return false;
   if (trade.type === 'HOLDING') return true;
   if (trade.id && (trade.id.startsWith('binance_') || trade.id.startsWith('trade_closed_'))) return true;
   if (trade.market === 'SPOT' && !isAlphaTradeOrSymbol(trade)) return true;

@@ -28,7 +28,7 @@ export function TradeProgressBar({ trade, currentPrice }: TradeProgressBarProps)
           <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
           <span>SL: ${formatPrice(trade.stopLoss, true)}</span>
           {trade.stopLoss > 0 && (
-            <span className="text-[9px] text-neutral-500">(-{slDistancePct.toFixed(1)}%)</span>
+            <span className="text-[9px] text-neutral-500">(-{slDistancePct.toFixed(2)}%)</span>
           )}
         </div>
 
@@ -40,7 +40,7 @@ export function TradeProgressBar({ trade, currentPrice }: TradeProgressBarProps)
         <div className="flex items-center gap-1 text-cyan-300 font-medium">
           <span>TP1: ${formatPrice(trade.takeProfit1 || trade.entryPrice * 1.05)}</span>
           {trade.takeProfit1 ? (
-            <span className="text-[9px] text-blue-300/80">(+{tpDistancePct.toFixed(1)}%)</span>
+            <span className="text-[9px] text-blue-300/80">(+{tpDistancePct.toFixed(2)}%)</span>
           ) : null}
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
         </div>
